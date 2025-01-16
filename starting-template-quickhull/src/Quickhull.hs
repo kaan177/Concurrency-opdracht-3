@@ -123,8 +123,9 @@ propagateR = error "TODO: propagateR"
 shiftHeadFlagsL :: Acc (Vector Bool) -> Acc (Vector Bool)
 shiftHeadFlagsL list = drop 1 list ++ take 1 list
 
+-- we will need to find a better solution than this later, but it hopefully works for now lmfao
 shiftHeadFlagsR :: Acc (Vector Bool) -> Acc (Vector Bool)
-shiftHeadFlagsR = error "TODO: shiftHeadFlagsR"
+shiftHeadFlagsR yay = reverse (shiftHeadFlagsL (reverse yay))
 
 segmentedScanl1 :: Elt a => (Exp a -> Exp a -> Exp a) -> Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
 segmentedScanl1 = error "TODO: segmentedScanl1"
