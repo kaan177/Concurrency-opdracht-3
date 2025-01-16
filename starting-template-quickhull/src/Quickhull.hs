@@ -115,7 +115,15 @@ quickhull =
 -- ----------------
 
 propagateL :: Elt a => Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
-propagateL yay1 yay2 = error "TODO: propagateL"
+propagateL flags nums =
+  let
+    zipped = zip flags nums
+    test = scanr halp (constant (False, undefined)) zipped
+  in
+    map snd test
+
+halp :: Elt a => Exp (Bool, a) -> Exp (Bool, a) -> Exp (Bool, a)
+halp (T2 bool1 num1) = cond bool1 (T2 bool1 num1)
 
 propagateR :: Elt a => Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
 propagateR = error "TODO: propagateR"
