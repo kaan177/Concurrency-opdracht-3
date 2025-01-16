@@ -115,17 +115,27 @@ quickhull =
 -- ----------------
 
 propagateL :: Elt a => Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
-propagateL = error "TODO: propagateL"
+propagateL yay1 yay2 = error "TODO: propagateL"
 
 propagateR :: Elt a => Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
 propagateR = error "TODO: propagateR"
 
 shiftHeadFlagsL :: Acc (Vector Bool) -> Acc (Vector Bool)
-shiftHeadFlagsL list = drop 1 list ++ take 1 list
+shiftHeadFlagsL flags =
+  generate (index1 (length flags)) $ \ix ->
+    let
+      i = unindex1 ix
+    in
+      cond (i == length flags - 1) (constant False) (flags ! index1 (i + 1))
 
 -- we will need to find a better solution than this later, but it hopefully works for now lmfao
 shiftHeadFlagsR :: Acc (Vector Bool) -> Acc (Vector Bool)
-shiftHeadFlagsR yay = reverse (shiftHeadFlagsL (reverse yay))
+shiftHeadFlagsR flags =
+  generate (index1 (length flags)) $ \ix ->
+    let
+      i = unindex1 ix
+    in
+      cond (i == 0) (constant False) (flags ! index1 (i - 1))
 
 segmentedScanl1 :: Elt a => (Exp a -> Exp a -> Exp a) -> Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
 segmentedScanl1 = error "TODO: segmentedScanl1"
