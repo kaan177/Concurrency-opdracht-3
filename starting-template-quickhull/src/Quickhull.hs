@@ -60,8 +60,11 @@ initialPartition :: Acc (Vector Point) -> Acc SegmentedPoints
 initialPartition points =
   let
       p1, p2 :: Exp Point
-      p1 = error "TODO: locate the left-most point"
-      p2 = error "TODO: locate the right-most point"
+      -- locate the left-most point
+      p1 = the $ fold (\a@(T2 xa _) b@(T2 xb _) -> cond (xa < xb) a b) (constant (maxBound::Int, 0)) points
+      -- locate the right-most point
+      p2 = the $ fold (\a@(T2 xa _) b@(T2 xb _) -> cond (xa > xb) a b) (constant (minBound::Int, 0)) points
+
 
       isUpper :: Acc (Vector Bool)
       isUpper = error "TODO: determine which points lie above the line (p₁, p₂)"
@@ -110,9 +113,10 @@ quickhull :: Acc (Vector Point) -> Acc (Vector Point)
 quickhull =
   error "TODO: quickhull"
 
-
 -- Helper functions
 -- ----------------
+
+
 
 propagateL :: Elt a => Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
 propagateL flags nums =
