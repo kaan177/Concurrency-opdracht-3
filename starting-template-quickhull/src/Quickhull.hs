@@ -164,10 +164,21 @@ shiftHeadFlagsR flags =
       cond (i == 0) (constant False) (flags ! index1 (i - 1))
 
 segmentedScanl1 :: Elt a => (Exp a -> Exp a -> Exp a) -> Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
-segmentedScanl1 = error "TODO: segmentedScanl1"
+segmentedScanl1 f headFlags values = 
+  let
+    zipped = zip headFlags values
+    scanned = scanl1 (segmented f) zipped
+    in
+      map snd scanned
+
 
 segmentedScanr1 :: Elt a => (Exp a -> Exp a -> Exp a) -> Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
-segmentedScanr1 = error "TODO: segmentedScanr1"
+segmentedScanr1 f headFlags values = 
+  let
+    zipped = zip headFlags values
+    scanned = scanr1 (segmented f) zipped
+    in
+      map snd scanned
 
 
 -- Given utility functions
