@@ -56,6 +56,10 @@ type SegmentedPoints = (Vector Bool, Vector Point)
 -- We indicate some intermediate values that you might find beneficial to
 -- compute.
 --
+
+floatValue :: Exp Float
+floatValue = fromIntegral (constant (0::Int))
+
 initialPartition :: Acc (Vector Point) -> Acc SegmentedPoints
 initialPartition points =
   let
@@ -64,10 +68,12 @@ initialPartition points =
       p1 = the $ fold (\a@(T2 xa _) b@(T2 xb _) -> cond (xa < xb) a b) (constant (maxBound::Int, 0)) points
       -- locate the right-most point
       p2 = the $ fold (\a@(T2 xa _) b@(T2 xb _) -> cond (xa > xb) a b) (constant (minBound::Int, 0)) points
-
-
+      
       isUpper :: Acc (Vector Bool)
-      isUpper = error "TODO: determine which points lie above the line (p₁, p₂)"
+      -- determine which points lie above the line (p₁, p₂)
+
+      -- currently using (0,0), (0,0) because I can't figure out how to create a Line
+      isUpper = map (pointIsLeftOfLine (constant ((0, 0), (0, 0)))) points
 
       isLower :: Acc (Vector Bool)
       isLower = error "TODO: determine which points lie below the line (p₁, p₂)"
@@ -131,7 +137,7 @@ halp :: Elt a => Exp (Bool, a) -> Exp (Bool, a) -> Exp (Bool, a)
 halp (T2 bool1 num1) = cond bool1 (T2 bool1 num1)
 
 propagateR :: Elt a => Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
-propagateR flags nums = 
+propagateR flags nums =
   let
     zipped = zip flags nums
     propogated = scanl halp (constant (False, undefined)) zipped
@@ -139,7 +145,8 @@ propagateR flags nums =
   -- we only need to return the second part of the zipped values
     map snd propogated
 
-
+-- Not sure if generating a new vector is the best option
+-- There might be a bettter solution that doesn't create a new vector
 shiftHeadFlagsL :: Acc (Vector Bool) -> Acc (Vector Bool)
 shiftHeadFlagsL flags =
   generate (index1 (length flags)) $ \ix ->
@@ -148,7 +155,6 @@ shiftHeadFlagsL flags =
     in
       cond (i == length flags - 1) (constant False) (flags ! index1 (i + 1))
 
--- we will need to find a better solution than this later, but it hopefully works for now lmfao
 shiftHeadFlagsR :: Acc (Vector Bool) -> Acc (Vector Bool)
 shiftHeadFlagsR flags =
   generate (index1 (length flags)) $ \ix ->
