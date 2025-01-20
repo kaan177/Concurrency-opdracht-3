@@ -22,6 +22,8 @@ module Quickhull (
 import Data.Array.Accelerate
 import Data.Array.Accelerate.Debug.Trace
 import qualified Prelude                      as P
+import GHC.IO.Handle (BufferMode(LineBuffering))
+import Data.Array.Accelerate.Smart (Exp(Exp))
 
 
 -- Points and lines in two-dimensional space
@@ -68,15 +70,14 @@ initialPartition points =
       p1 = the $ fold (\a@(T2 xa _) b@(T2 xb _) -> cond (xa < xb) a b) (constant (maxBound::Int, 0)) points
       -- locate the right-most point
       p2 = the $ fold (\a@(T2 xa _) b@(T2 xb _) -> cond (xa > xb) a b) (constant (minBound::Int, 0)) points
-      
+
       isUpper :: Acc (Vector Bool)
       -- determine which points lie above the line (p₁, p₂)
-
-      -- currently using (0,0), (0,0) because I can't figure out how to create a Line
-      isUpper = map (pointIsLeftOfLine (constant ((0, 0), (0, 0)))) points
+      isUpper = map (pointIsLeftOfLine (T2 p1 p2)) points
 
       isLower :: Acc (Vector Bool)
-      isLower = error "TODO: determine which points lie below the line (p₁, p₂)"
+      isLower = map (not . pointIsLeftOfLine (T2 p1 p2)) points
+
 
       offsetUpper :: Acc (Vector Int)
       countUpper  :: Acc (Scalar Int)
@@ -164,7 +165,7 @@ shiftHeadFlagsR flags =
       cond (i == 0) (constant False) (flags ! index1 (i - 1))
 
 segmentedScanl1 :: Elt a => (Exp a -> Exp a -> Exp a) -> Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
-segmentedScanl1 f headFlags values = 
+segmentedScanl1 f headFlags values =
   let
     zipped = zip headFlags values
     scanned = scanl1 (segmented f) zipped
@@ -173,12 +174,21 @@ segmentedScanl1 f headFlags values =
 
 
 segmentedScanr1 :: Elt a => (Exp a -> Exp a -> Exp a) -> Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
-segmentedScanr1 f headFlags values = 
+segmentedScanr1 f headFlags values =
   let
     zipped = zip headFlags values
     scanned = scanr1 (segmented f) zipped
     in
       map snd scanned
+
+
+--Functies die je mag gebruiken 
+--map
+--Stencil
+--Gather
+--Scatter
+--fold
+--scan
 
 
 -- Given utility functions
