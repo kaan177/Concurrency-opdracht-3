@@ -23,7 +23,8 @@ import Data.Array.Accelerate
 import Data.Array.Accelerate.Debug.Trace
 import qualified Prelude                      as P
 import GHC.IO.Handle (BufferMode(LineBuffering))
-import Data.Array.Accelerate.Smart (Exp(Exp))
+import Data.Array.Accelerate.Smart (Exp(Exp), undef)
+import GHC.Base (VecElem(Int16ElemRep))
 
 
 -- Points and lines in two-dimensional space
@@ -79,13 +80,35 @@ initialPartition points =
       isLower = map (not . pointIsLeftOfLine (T2 p1 p2)) points
 
 
+      --offsetUpper is net zo lang als de originele array. En alle false values hebben een -1 als index
       offsetUpper :: Acc (Vector Int)
       countUpper  :: Acc (Scalar Int)
-      T2 offsetUpper countUpper = error "TODO: number of points above the line and their relative index"
+      T2 offsetUpper countUpper =
+        let
+          mapped = map (\b -> if b then constant (1 :: Int) else constant 0) isLower
+          count = fold (+) 0 mapped
+
+          mapped' = map (\_ -> constant (1 :: Int)) isLower
+          indexarray = scanl1 (+) mapped'
+          adjustedIndexArray = zipWith aBitOfHelp indexarray isLower
+        in
+          T2 adjustedIndexArray count
+
+      aBitOfHelp :: Exp Int -> Exp Bool -> Exp Int
+      aBitOfHelp index bool = if bool then index else constant (-1)
 
       offsetLower :: Acc (Vector Int)
       countLower  :: Acc (Scalar Int)
-      T2 offsetLower countLower = error "TODO: number of points below the line and their relative index"
+      T2 offsetLower countLower = 
+        let
+          mapped = map (\b -> if b then constant (1 :: Int) else constant 0) isUpper
+          count = fold (+) 0 mapped
+
+          mapped' = map (\_ -> constant (1 :: Int)) isUpper
+          indexarray = scanl1 (+) mapped'
+          adjustedIndexArray = zipWith aBitOfHelp indexarray isUpper
+        in
+          T2 adjustedIndexArray count
 
       destination :: Acc (Vector (Maybe DIM1))
       destination = error "TODO: compute the index in the result array for each point (if it is present)"
@@ -165,7 +188,7 @@ segmentedScanr1 f headFlags values =
       map snd scanned
 
 
---Functies die je mag gebruiken 
+--Functies die je mag gebruiken (niet compleet)
 --map
 --Stencil
 --Gather
