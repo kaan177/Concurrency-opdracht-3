@@ -87,7 +87,12 @@ initialPartition points =
           count = fold (+) 0 mapped
 
           mapped' = map (\_ -> constant (1 :: Int)) isUpper
+
+          -- vlgns mij groeit dit getal exponentieel? 
+          -- Heb eronder een alternatief geschreven die misschien wel de correcte index geeft.
           indexarray = scanl1 (+) mapped'
+          indexarray' = scanl (\a _ -> a + 1) (constant 0) mapped'
+          
           adjustedIndexArray = zipWith aBitOfHelp indexarray isUpper
         in
           T2 adjustedIndexArray count
@@ -156,7 +161,7 @@ partition (T2 headFlags points) =
     zipped = zip3 (propagateL headFlags points) (propagateR headFlags points) points
     isLeftOfLine = map (\(T3 l1 l2 point) -> pointIsLeftOfLine (T2 l1 l2) point) zipped
     distances = map (\(T3 l1 l2 point) -> nonNormalizedDistance (T2 l1 l2) point) zipped
-
+    
     -- yay = segmentedScanl1 (\(T3 l1 l2 _) (T3 flag b2 point) -> T3 flag b2 c2) headFlags zipped
   in
     error "TODO: partition"
