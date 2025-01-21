@@ -148,6 +148,8 @@ propagateR flags nums =
 
 -- Not sure if generating a new vector is the best option
 -- There might be a bettter solution that doesn't create a new vector
+
+-- these functions can be improved by using the permute function
 shiftHeadFlagsL :: Acc (Vector Bool) -> Acc (Vector Bool)
 shiftHeadFlagsL flags =
   generate (index1 (length flags)) $ \ix ->
