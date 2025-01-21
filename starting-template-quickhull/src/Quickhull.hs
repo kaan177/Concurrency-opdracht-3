@@ -149,30 +149,10 @@ quickhull =
 
 
 propagateL :: Elt a => Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
--- propagateL flags nums =
---   let
---     zipped = zip flags nums
---     propogated = scanr halp (constant (False, undefined)) zipped
---   in
---   -- we only need to return the second part of the zipped values
---     map snd propogated
-
-propagateL flags nums =
-  let
-    propogated = segmentedScanl1 halp flags undefined
-  in
-    map snd propogated
-halp :: Elt a => Exp (Bool, a) -> Exp (Bool, a) -> Exp (Bool, a)
-halp (T2 bool1 num1) = cond bool1 (T2 bool1 num1)
+propagateL = segmentedScanl1 P.const
 
 propagateR :: Elt a => Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
-propagateR flags nums =
-  let
-    zipped = zip flags nums
-    propogated = scanl halp (constant (False, undefined)) zipped
-  in
-  -- we only need to return the second part of the zipped values
-    map snd propogated
+propagateR = segmentedScanr1 P.const
 
 -- these functions can be improved by using the permute function
 shiftHeadFlagsL :: Acc (Vector Bool) -> Acc (Vector Bool)
