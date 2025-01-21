@@ -146,9 +146,6 @@ propagateR flags nums =
   -- we only need to return the second part of the zipped values
     map snd propogated
 
--- Not sure if generating a new vector is the best option
--- There might be a bettter solution that doesn't create a new vector
-
 -- these functions can be improved by using the permute function
 shiftHeadFlagsL :: Acc (Vector Bool) -> Acc (Vector Bool)
 shiftHeadFlagsL flags =
@@ -174,7 +171,7 @@ segmentedScanl1 f headFlags values =
     in
       map snd scanned
 
-
+-- this scan does not work yet
 segmentedScanr1 :: Elt a => (Exp a -> Exp a -> Exp a) -> Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
 segmentedScanr1 f headFlags values =
   let
