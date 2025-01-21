@@ -99,7 +99,7 @@ initialPartition points =
 
       offsetLower :: Acc (Vector Int)
       countLower  :: Acc (Scalar Int)
-      T2 offsetLower countLower = 
+      T2 offsetLower countLower =
         let
           mapped = map (\b -> if b then constant (1 :: Int) else constant 0) isLower
           count = fold (+) 0 mapped
@@ -133,7 +133,16 @@ initialPartition points =
 --
 partition :: Acc SegmentedPoints -> Acc SegmentedPoints
 partition (T2 headFlags points) =
-  error "TODO: partition"
+  let
+    
+    -- this creates a list of booleans that are true if the point is left of the segment that it is in.
+    zipped = zip3 (propagateL headFlags points) (propagateR headFlags points) points
+    isLeftOfLine = map (\(T3 l1 l2 point) -> pointIsLeftOfLine (T2 l1 l2) point) zipped
+    distances = map (\(T3 l1 l2 point) -> nonNormalizedDistance (T2 l1 l2) point) zipped
+
+    -- yay = segmentedScanl1 (\(T3 l1 l2 _) (T3 flag b2 point) -> T3 flag b2 c2) headFlags zipped
+  in
+    error "TODO: partition"
 
 
 -- The completed algorithm repeatedly partitions the points until there are
