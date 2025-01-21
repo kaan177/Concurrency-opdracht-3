@@ -156,7 +156,7 @@ shiftHeadFlagsL flags =
     let
       i = unindex1 ix
     in
-      cond (i == length flags - 1) (constant False) (flags ! index1 (i + 1))
+      cond (i == length flags - 1) (constant True) (flags ! index1 (i + 1))
 
 shiftHeadFlagsR :: Acc (Vector Bool) -> Acc (Vector Bool)
 shiftHeadFlagsR flags =
@@ -164,7 +164,7 @@ shiftHeadFlagsR flags =
     let
       i = unindex1 ix
     in
-      cond (i == 0) (constant False) (flags ! index1 (i - 1))
+      cond (i == 0) (constant True) (flags ! index1 (i - 1))
 
 segmentedScanl1 :: Elt a => (Exp a -> Exp a -> Exp a) -> Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
 segmentedScanl1 f headFlags values =
