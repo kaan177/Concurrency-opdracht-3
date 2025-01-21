@@ -60,8 +60,6 @@ type SegmentedPoints = (Vector Bool, Vector Point)
 -- compute.
 --
 
-floatValue :: Exp Float
-floatValue = fromIntegral (constant (0::Int))
 
 initialPartition :: Acc (Vector Point) -> Acc SegmentedPoints
 initialPartition points =
