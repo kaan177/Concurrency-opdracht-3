@@ -149,14 +149,19 @@ quickhull =
 
 
 propagateL :: Elt a => Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
+-- propagateL flags nums =
+--   let
+--     zipped = zip flags nums
+--     propogated = scanr halp (constant (False, undefined)) zipped
+--   in
+--   -- we only need to return the second part of the zipped values
+--     map snd propogated
+
 propagateL flags nums =
   let
-    zipped = zip flags nums
-    propogated = scanr halp (constant (False, undefined)) zipped
+    propogated = segmentedScanl1 halp flags undefined
   in
-  -- we only need to return the second part of the zipped values
     map snd propogated
-
 halp :: Elt a => Exp (Bool, a) -> Exp (Bool, a) -> Exp (Bool, a)
 halp (T2 bool1 num1) = cond bool1 (T2 bool1 num1)
 
@@ -169,15 +174,14 @@ propagateR flags nums =
   -- we only need to return the second part of the zipped values
     map snd propogated
 
--- Not sure if generating a new vector is the best option
--- There might be a bettter solution that doesn't create a new vector
+-- these functions can be improved by using the permute function
 shiftHeadFlagsL :: Acc (Vector Bool) -> Acc (Vector Bool)
 shiftHeadFlagsL flags =
   generate (index1 (length flags)) $ \ix ->
     let
       i = unindex1 ix
     in
-      cond (i == length flags - 1) (constant False) (flags ! index1 (i + 1))
+      cond (i == length flags - 1) (constant True) (flags ! index1 (i + 1))
 
 shiftHeadFlagsR :: Acc (Vector Bool) -> Acc (Vector Bool)
 shiftHeadFlagsR flags =
@@ -185,7 +189,7 @@ shiftHeadFlagsR flags =
     let
       i = unindex1 ix
     in
-      cond (i == 0) (constant False) (flags ! index1 (i - 1))
+      cond (i == 0) (constant True) (flags ! index1 (i - 1))
 
 segmentedScanl1 :: Elt a => (Exp a -> Exp a -> Exp a) -> Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
 segmentedScanl1 f headFlags values =
@@ -195,12 +199,11 @@ segmentedScanl1 f headFlags values =
     in
       map snd scanned
 
-
 segmentedScanr1 :: Elt a => (Exp a -> Exp a -> Exp a) -> Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
 segmentedScanr1 f headFlags values =
   let
     zipped = zip headFlags values
-    scanned = scanr1 (segmented f) zipped
+    scanned = scanr1 (flip (segmented f)) zipped
     in
       map snd scanned
 
