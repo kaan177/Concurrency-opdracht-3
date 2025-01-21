@@ -85,12 +85,12 @@ initialPartition points =
       countUpper  :: Acc (Scalar Int)
       T2 offsetUpper countUpper =
         let
-          mapped = map (\b -> if b then constant (1 :: Int) else constant 0) isLower
+          mapped = map (\b -> if b then constant (1 :: Int) else constant 0) isUpper
           count = fold (+) 0 mapped
 
-          mapped' = map (\_ -> constant (1 :: Int)) isLower
+          mapped' = map (\_ -> constant (1 :: Int)) isUpper
           indexarray = scanl1 (+) mapped'
-          adjustedIndexArray = zipWith aBitOfHelp indexarray isLower
+          adjustedIndexArray = zipWith aBitOfHelp indexarray isUpper
         in
           T2 adjustedIndexArray count
 
@@ -101,12 +101,12 @@ initialPartition points =
       countLower  :: Acc (Scalar Int)
       T2 offsetLower countLower = 
         let
-          mapped = map (\b -> if b then constant (1 :: Int) else constant 0) isUpper
+          mapped = map (\b -> if b then constant (1 :: Int) else constant 0) isLower
           count = fold (+) 0 mapped
 
-          mapped' = map (\_ -> constant (1 :: Int)) isUpper
+          mapped' = map (\_ -> constant (1 :: Int)) isLower
           indexarray = scanl1 (+) mapped'
-          adjustedIndexArray = zipWith aBitOfHelp indexarray isUpper
+          adjustedIndexArray = zipWith aBitOfHelp indexarray isLower
         in
           T2 adjustedIndexArray count
 
