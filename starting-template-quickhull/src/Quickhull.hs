@@ -149,10 +149,10 @@ quickhull =
 
 
 propagateL :: Elt a => Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
-propagateL = segmentedScanl1 P.const
+propagateL = segmentedScanl1 const
 
 propagateR :: Elt a => Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
-propagateR = segmentedScanr1 P.const
+propagateR = segmentedScanr1 const
 
 -- these functions can be improved by using the permute function
 shiftHeadFlagsL :: Acc (Vector Bool) -> Acc (Vector Bool)
