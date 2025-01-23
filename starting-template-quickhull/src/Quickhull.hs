@@ -79,6 +79,7 @@ initialPartition points =
       isLower :: Acc (Vector Bool)
       isLower = map (pointIsLeftOfLine (T2 p2 p1)) points
 
+      indexedArray = generate (index1 (length points)) unindex1
 
       --offsetUpper is net zo lang als de originele array. En alle false values hebben een -1 als index
       offsetUpper :: Acc (Vector Int)
@@ -88,16 +89,19 @@ initialPartition points =
           mapped = map (\b -> if b then constant (1 :: Int) else constant 0) isUpper
           count = fold (+) 0 mapped
 
-          mapped' = map (\_ -> constant (1 :: Int)) isUpper
+          -- mapped' = map (\_ -> constant (1 :: Int)) isUpper
 
           -- vlgns mij groeit dit getal exponentieel? 
           -- Heb eronder een alternatief geschreven die misschien wel de correcte index geeft.
-          indexarray = scanl1 (+) mapped'
-          indexarray' = tail (scanl (\a _ -> a + 1) (constant (-1)) mapped')
+          -- indexarray = scanl1 (+) mapped'
 
-          adjustedIndexArray = zipWith aBitOfHelp indexarray isUpper
+          -- adjustedIndexArray = zipWith aBitOfHelp indexedArray isUpper
+
+          adjustedIndexArray = scanl1 (+) mapped
+          adjustedIndexArray' = map (+ (-1)) adjustedIndexArray
+          yay = scanl1 (\a b -> cond (a < b) b (-1)) adjustedIndexArray'
         in
-          T2 adjustedIndexArray count
+          T2 yay count
 
       aBitOfHelp :: Exp Int -> Exp Bool -> Exp Int
       aBitOfHelp index bool = if bool then index else constant (-1)
@@ -109,11 +113,14 @@ initialPartition points =
           mapped = map (\b -> if b then constant (1 :: Int) else constant 0) isLower
           count = fold (+) 0 mapped
 
-          mapped' = map (\_ -> constant (1 :: Int)) isLower
-          indexarray = scanl1 (+) mapped'
-          adjustedIndexArray = zipWith aBitOfHelp indexarray isLower
+          -- mapped' = map (\_ -> constant (1 :: Int)) isLower
+          -- indexarray = scanl1 (+) mapped'
+          -- adjustedIndexArray = zipWith aBitOfHelp indexedArray isLower
+          adjustedIndexArray = scanl1 (+) mapped
+          adjustedIndexArray' = map (+ (-1)) adjustedIndexArray
+          yay = scanl1 (\a b -> cond (a < b) b (-1)) adjustedIndexArray'
         in
-          T2 adjustedIndexArray count
+          T2 yay count
 
       destination :: Acc (Vector (Maybe DIM1))
       destination =
@@ -125,8 +132,8 @@ initialPartition points =
 
       halp1 :: Exp (Int, Int) -> Exp (Maybe DIM1)
       halp1 (T2 num1 num2)  =
-        if num1 /= constant (-1)
-          then lift (Just (Z:. (1 + num1)))
+        if num1 /= -1
+          then lift (Just (Z:. num1 + 1))
           else
             if num2 /= -1
               then lift (Just (Z:. (num1 + 2 + unlift (the countUpper))))
@@ -141,22 +148,24 @@ initialPartition points =
           list = fill (index1 totalLength) undef
           listWithoutPoints = permute const list (destination !) points
         in
-          imap (\ix b -> cond 
+          imap (\ix b -> cond
           (unindex1 ix == constant 0 ||
-          ix == index1 totalLength) p1 (
-            cond 
+          ix == index1 (totalLength - 1)) p1 (
+            cond
             (ix == index1 (1 + the countUpper))
             --(newPoints ! ix == undef)
               p2 b)) listWithoutPoints
+        
+      
 
       headFlags :: Acc (Vector Bool)
-      headFlags = 
+      headFlags =
           generate (index1 totalLength) (\ix -> cond (
-            unindex1 ix == constant 0 || 
-            ix == index1 totalLength ||
-            newPoints ! ix == p2) 
+            unindex1 ix == constant 0 ||
+            ix == index1 (totalLength - 1) ||
+            newPoints ! ix == p2)
             (constant True) (constant False))
-            
+
   in
   T2 headFlags newPoints
 
