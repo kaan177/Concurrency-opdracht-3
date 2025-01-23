@@ -144,7 +144,7 @@ initialPartition points =
       headFlags :: Acc (Vector Bool)
       headFlags = 
           generate (constant (Z:. totalLength)) (\ix -> cond (
-            ix == 0 || 
+            unindex1 ix == constant 0 || 
             unindex1 ix == constant totalLength ||
             newPoints ! ix == p2) 
             (constant True) (constant False))
@@ -226,12 +226,12 @@ partition (T2 headFlags points) =
     newHeadFlagIndexes = undefined
 
 
-    sizeOfNewArray =
-      let
-        newPoints = countTrue canBePartOfNewHull
-        flagCount = countTrue newFlags
-      in
-        newPoints + flagCount
+    -- sizeOfNewArray =
+    --   let
+    --     newPoints = countTrue canBePartOfNewHull
+    --     flagCount = countTrue newFlags
+    --   in
+    --     newPoints + flagCount
 
 
     -- eindigen met een scatter functie
