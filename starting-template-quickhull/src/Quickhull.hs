@@ -94,7 +94,7 @@ initialPartition points =
           -- Heb eronder een alternatief geschreven die misschien wel de correcte index geeft.
           indexarray = scanl1 (+) mapped'
           indexarray' = tail (scanl (\a _ -> a + 1) (constant (-1)) mapped')
-          
+
           adjustedIndexArray = zipWith aBitOfHelp indexarray isUpper
         in
           T2 adjustedIndexArray count
@@ -116,29 +116,39 @@ initialPartition points =
           T2 adjustedIndexArray count
 
       destination :: Acc (Vector (Maybe DIM1))
-      destination = 
+      destination =
         let
           zipOfsets = zip offsetUpper offsetLower
           mapped = map halp1 zipOfsets
 
-        in mapped 
-      
+        in mapped
+
       halp1 :: Exp (Int, Int) -> Exp (Maybe DIM1)
-      halp1 (T2 num1 num2)  = 
+      halp1 (T2 num1 num2)  =
         if num1 /= constant (-1)
           then constant (Just (Z:. (1 + unlift num1)))
           else
             if num2 /= -1
-              then constant(Just (Z:. (unlift num1 + 2 + unlift (the countUpper))))
+              then constant (Just (Z:. (unlift num1 + 2 + unlift (the countUpper))))
               else
                 constant Nothing
-                
 
+      totalLength = (3 + unlift (the countUpper) + unlift (the countLower))
       newPoints :: Acc (Vector Point)
-      newPoints = error "TODO: place each point into its corresponding segment of the result"
+      newPoints =
+        let
+          list = fill (constant (Z:. totalLength)) undef
+        in
+          permute const list (destination !) points
 
       headFlags :: Acc (Vector Bool)
-      headFlags = error "TODO: create head flags array demarcating the initial segments"
+      headFlags = 
+          generate (constant (Z:. totalLength)) (\ix -> cond (
+            ix == 0 || 
+            unindex1 ix == constant totalLength ||
+            newPoints ! ix == p2) 
+            (constant True) (constant False))
+          
   in
   T2 headFlags newPoints
 
@@ -174,21 +184,21 @@ partition (T2 headFlags points) =
         -- not sure if checking for 0 is nessecary here
         -- I'll look into it later on if we have time left
         zipWith (curry (\(T2 a b) -> cond (a == b && (a /= constant (0::Int)) && (b /= constant (0::Int))) (constant True) (constant False))) test1 test2
-    
+
     newFlags = zipWith (curry (\(T2 a b) -> cond (a || b) (constant True) (constant False))) headFlags maxFlags
 
 
     canBePartOfNewHull =
-      let 
+      let
         zipped = zip3 (propagateL newFlags points) (propagateR newFlags points) points
         -- left = propagateR 
 
 
       in
         map (\(T3 l1 l2 point) -> pointIsLeftOfLine (T2 l1 l2) point) zipped
-    
+
     -- indexarray' = scanl (\a _ -> a + 1) (constant (0::Int)) headFlags
-    
+
 
     -- this should be done after things have been removed
     -- offset for each segment
@@ -206,23 +216,23 @@ partition (T2 headFlags points) =
           -- Heb eronder een alternatief geschreven die misschien wel de correcte index geeft.
           indexarray = scanl1 (+) mapped'
           indexarray' = tail (scanl (\a _ -> a + 1) (constant (-1)) mapped')
-          
+
           adjustedIndexArray = undefined
           --adjustedIndexArray = zipWith aBitOfHelp indexarray isUpper
         in
-          T2 adjustedIndexArray count 
+          T2 adjustedIndexArray count
 
     newHeadFlagIndexes :: Acc (Vector Int)
     newHeadFlagIndexes = undefined
 
 
-    sizeOfNewArray = 
-      let 
+    sizeOfNewArray =
+      let
         newPoints = countTrue canBePartOfNewHull
         flagCount = countTrue newFlags
-      in 
+      in
         newPoints + flagCount
-    
+
 
     -- eindigen met een scatter functie
     -- yay = segmentedScanl1 (\(T3 l1 l2 _) (T3 flag b2 point) -> T3 flag b2 c2) headFlags zipped
@@ -313,8 +323,8 @@ segmented f (T2 aF aV) (T2 bF bV) = T2 (aF || bF) (bF ? (bV, f aV bV))
 
 
 
-countTrue = 
-  let
-    ones = fold (\a b -> cond (a == constant True) (b + 1) a) (constant (0::Int))
-  in 
-    ones
+-- countTrue =
+--   let
+--     ones = fold (\a b -> cond (a == constant True) (b + 1) a) (constant (0::Int))
+--   in
+--     ones
