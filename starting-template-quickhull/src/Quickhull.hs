@@ -3,6 +3,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RebindableSyntax  #-}
 {-# LANGUAGE TypeOperators     #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use guards" #-}
 
 module Quickhull (
 
@@ -128,16 +130,16 @@ initialPartition points =
       
       halp1 :: Exp (Int, Int) -> Exp (Maybe DIM1)
       halp1 (T2 num1 num2)  = 
-        if ((num1 /= (constant (-1))))
-          then constant (Just (Z:. (num1 + (constant 1))))
+        if num1 /= constant (-1)
+          then constant (Just (Z:. (1 + unlift num1)))
           else
-            if ((num2 /= -1))
-              then constant(Just (Z:. (num1 + 2 + )))
+            if num2 /= -1
+              then constant(Just (Z:. (unlift num1 + 2 + (countUpper))))
               else
                 constant Nothing
 
       makeDIM1 :: Exp Int -> Exp (Maybe DIM1)
-      makeDIM1 num1  = constant (Just (Z:. (num1)))
+      makeDIM1 num1  = constant (Just (Z:. unlift num1))
 
       newPoints :: Acc (Vector Point)
       newPoints = error "TODO: place each point into its corresponding segment of the result"
