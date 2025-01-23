@@ -134,18 +134,24 @@ initialPartition points =
                 constant Nothing
 
       totalLength = (3 + the countUpper + the countLower)
+
       newPoints :: Acc (Vector Point)
       newPoints =
         let
           list = fill (index1 totalLength) undef
+          listWithoutPoints = permute const list (destination !) points
         in
-          permute const list (destination !) points
+          imap (\ix b -> cond 
+          (unindex1 ix == constant 0 ||
+          ix == index1 totalLength) p1 (
+            cond (newPoints ! ix == undef)
+            p2 b)) listWithoutPoints
 
       headFlags :: Acc (Vector Bool)
       headFlags = 
           generate (index1 totalLength) (\ix -> cond (
             unindex1 ix == constant 0 || 
-            --unindex1 ix == constant totalLength ||
+            ix == index1 totalLength ||
             newPoints ! ix == p2) 
             (constant True) (constant False))
           
