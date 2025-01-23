@@ -136,7 +136,7 @@ initialPartition points =
           then lift (Just (Z:. num1 + 1))
           else
             if num2 /= -1
-              then lift (Just (Z:. (num1 + 2 + unlift (the countUpper))))
+              then lift (Just (Z:. (num2 + 2 + unlift (the countUpper))))
               else
                 constant Nothing
 
@@ -150,21 +150,20 @@ initialPartition points =
         in
           imap (\ix b -> cond
           (unindex1 ix == constant 0 ||
-          ix == index1 (totalLength - 1)) p1 (
-            cond
-            (ix == index1 (1 + the countUpper))
+          ix == index1 (totalLength - 1)) p1 
+          (cond (ix == index1 (1 + the countUpper)) p2 b))
             --(newPoints ! ix == undef)
-              p2 b)) listWithoutPoints
+               listWithoutPoints
         
       
 
       headFlags :: Acc (Vector Bool)
       headFlags =
-          generate (index1 totalLength) (\ix -> cond (
-            unindex1 ix == constant 0 ||
-            ix == index1 (totalLength - 1) ||
-            newPoints ! ix == p2)
-            (constant True) (constant False))
+          generate (index1 totalLength) 
+          (\ix -> cond (unindex1 ix    == constant 0 ||
+                        ix             == index1 (totalLength - 1) ||
+                        newPoints ! ix == p2)
+                          (constant True) (constant False))
 
   in
   T2 headFlags newPoints
