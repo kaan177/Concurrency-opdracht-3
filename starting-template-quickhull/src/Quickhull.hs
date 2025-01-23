@@ -134,7 +134,7 @@ initialPartition points =
           then constant (Just (Z:. (1 + unlift num1)))
           else
             if num2 /= -1
-              then constant(Just (Z:. (unlift num1 + 2 + (countUpper))))
+              then constant(Just (Z:. (unlift num1 + 2 + unlift (the countUpper))))
               else
                 constant Nothing
 
