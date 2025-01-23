@@ -144,8 +144,10 @@ initialPartition points =
           imap (\ix b -> cond 
           (unindex1 ix == constant 0 ||
           ix == index1 totalLength) p1 (
-            cond (newPoints ! ix == undef)
-            p2 b)) listWithoutPoints
+            cond 
+            (ix == index1 (1 + the countUpper))
+            --(newPoints ! ix == undef)
+              p2 b)) listWithoutPoints
 
       headFlags :: Acc (Vector Bool)
       headFlags = 
@@ -154,7 +156,7 @@ initialPartition points =
             ix == index1 totalLength ||
             newPoints ! ix == p2) 
             (constant True) (constant False))
-          
+            
   in
   T2 headFlags newPoints
 
