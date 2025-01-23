@@ -125,16 +125,19 @@ initialPartition points =
 
         in mapped --error "TODO: compute the index in the result array for each point (if it is present)"
         
-      halp1 = undefined
+      
       halp1 :: Exp (Int, Int) -> Exp (Maybe DIM1)
       halp1 (T2 num1 num2)  = 
-        if (not . (num1 == (constant (-1))))
+        if ((num1 /= (constant (-1))))
           then constant (Just (Z:. (num1 + (constant 1))))
           else
-            if (not . (num2 == -1))
-              then (Just (Z:. (num1 + 2 + )))
+            if ((num2 /= -1))
+              then constant(Just (Z:. (num1 + 2 + )))
               else
-                Nothing
+                constant Nothing
+
+      makeDIM1 :: Exp Int -> Exp (Maybe DIM1)
+      makeDIM1 num1  = constant (Just (Z:. (num1)))
 
       newPoints :: Acc (Vector Point)
       newPoints = error "TODO: place each point into its corresponding segment of the result"
