@@ -91,7 +91,7 @@ initialPartition points =
           -- vlgns mij groeit dit getal exponentieel? 
           -- Heb eronder een alternatief geschreven die misschien wel de correcte index geeft.
           indexarray = scanl1 (+) mapped'
-          indexarray' = scanl (\a _ -> a + 1) (constant 0) mapped'
+          indexarray' = tail (scanl (\a _ -> a + 1) (constant (-1)) mapped')
           
           adjustedIndexArray = zipWith aBitOfHelp indexarray isUpper
         in
@@ -125,6 +125,7 @@ initialPartition points =
 
         in mapped --error "TODO: compute the index in the result array for each point (if it is present)"
         
+      halp1 = undefined
       halp1 :: Exp (Int, Int) -> Exp (Maybe DIM1)
       halp1 (T2 num1 num2)  = 
         if (not . (num1 == (constant (-1))))
@@ -174,14 +175,58 @@ partition (T2 headFlags points) =
         -- Whenever the a and b are the same, the value is the highest value in that segment
         -- not sure if checking for 0 is nessecary here
         -- I'll look into it later on if we have time left
-        zipWith (curry (\(T2 a b) -> cond (a == b && (a /= constant 0) && (b /= constant 0)) (constant True) (constant False))) test1 test2
+        zipWith (curry (\(T2 a b) -> cond (a == b && (a /= constant (0::Int)) && (b /= constant (0::Int))) (constant True) (constant False))) test1 test2
     
     newFlags = zipWith (curry (\(T2 a b) -> cond (a || b) (constant True) (constant False))) headFlags maxFlags
 
 
+    canBePartOfNewHull =
+      let 
+        zipped = zip3 (propagateL newFlags points) (propagateR newFlags points) points
+        -- left = propagateR 
 
-    indexarray' = scanl (\a _ -> a + 1) (constant 0) headFlags
 
+      in
+        map (\(T3 l1 l2 point) -> pointIsLeftOfLine (T2 l1 l2) point) zipped
+    
+    -- indexarray' = scanl (\a _ -> a + 1) (constant (0::Int)) headFlags
+    
+
+    -- this should be done after things have been removed
+    -- offset for each segment
+    -- segmentedOffset = propagateR indexarray' newFlags
+    offsetUpper :: Acc (Vector Int)
+    countUpper  :: Acc (Scalar Int)
+    T2 offsetUpper countUpper =
+        let
+          mapped = map (\b -> if b then constant (1 :: Int) else constant 0) canBePartOfNewHull
+          count = fold (+) 0 mapped
+
+          mapped' = map (\_ -> constant (1 :: Int)) canBePartOfNewHull
+
+          -- vlgns mij groeit dit getal exponentieel? 
+          -- Heb eronder een alternatief geschreven die misschien wel de correcte index geeft.
+          indexarray = scanl1 (+) mapped'
+          indexarray' = tail (scanl (\a _ -> a + 1) (constant (-1)) mapped')
+          
+          adjustedIndexArray = undefined
+          --adjustedIndexArray = zipWith aBitOfHelp indexarray isUpper
+        in
+          T2 adjustedIndexArray count 
+
+    newHeadFlagIndexes :: Acc (Vector Int)
+    newHeadFlagIndexes = undefined
+
+
+    sizeOfNewArray = 
+      let 
+        newPoints = countTrue canBePartOfNewHull
+        flagCount = countTrue newFlags
+      in 
+        newPoints + flagCount
+    
+
+    -- eindigen met een scatter functie
     -- yay = segmentedScanl1 (\(T3 l1 l2 _) (T3 flag b2 point) -> T3 flag b2 c2) headFlags zipped
   in
     error "TODO: partition"
@@ -268,3 +313,10 @@ nonNormalizedDistance (T2 (T2 x1 y1) (T2 x2 y2)) (T2 x y) = nx * x + ny * y - c
 segmented :: Elt a => (Exp a -> Exp a -> Exp a) -> Exp (Bool, a) -> Exp (Bool, a) -> Exp (Bool, a)
 segmented f (T2 aF aV) (T2 bF bV) = T2 (aF || bF) (bF ? (bV, f aV bV))
 
+
+
+countTrue = 
+  let
+    ones = fold (\a b -> cond (a == constant True) (b + 1) a) (constant (0::Int))
+  in 
+    ones
