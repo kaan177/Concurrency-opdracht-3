@@ -27,6 +27,7 @@ import qualified Prelude                      as P
 import GHC.IO.Handle (BufferMode(LineBuffering))
 import Data.Array.Accelerate.Smart (Exp(Exp), undef)
 import GHC.Base (VecElem(Int16ElemRep))
+import Data.Array.Accelerate.Interpreter (run)
 
 
 -- Points and lines in two-dimensional space
@@ -63,14 +64,16 @@ type SegmentedPoints = (Vector Bool, Vector Point)
 --
 
 
-initialPartition :: Acc (Vector Point) -> Acc SegmentedPoints
+initialPartition :: Acc (Vector Point) ->  Acc SegmentedPoints
 initialPartition points =
   let
+      leftMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa < xb) (cond (ya < yb) a b) b
+      rightMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa > xb) (cond (ya < yb) a b) b
       p1, p2 :: Exp Point
       -- locate the left-most point
-      p1 = the $ fold (\a@(T2 xa _) b@(T2 xb _) -> cond (xa < xb) a b) (constant (maxBound::Int, 0)) points
+      p1 = the $ fold leftMostTest (constant (maxBound::Int, 0)) points
       -- locate the right-most point
-      p2 = the $ fold (\a@(T2 xa _) b@(T2 xb _) -> cond (xa > xb) a b) (constant (minBound::Int, 0)) points
+      p2 = the $ fold rightMostTest (constant (minBound::Int, 0)) points
 
       isUpper :: Acc (Vector Bool)
       -- determine which points lie above the line (p₁, p₂)
@@ -88,18 +91,10 @@ initialPartition points =
         let
           mapped = map (\b -> if b then constant (1 :: Int) else constant 0) isUpper
           count = fold (+) 0 mapped
-
-          -- mapped' = map (\_ -> constant (1 :: Int)) isUpper
-
-          -- vlgns mij groeit dit getal exponentieel? 
-          -- Heb eronder een alternatief geschreven die misschien wel de correcte index geeft.
-          -- indexarray = scanl1 (+) mapped'
-
-          -- adjustedIndexArray = zipWith aBitOfHelp indexedArray isUpper
-
           adjustedIndexArray = scanl1 (+) mapped
           adjustedIndexArray' = map (+ (-1)) adjustedIndexArray
-          yay = scanl1 (\a b -> cond (a < b) b (-1)) adjustedIndexArray'
+          yay = zipWith (\a isUpperCondition -> cond isUpperCondition a (-1)) adjustedIndexArray' isUpper
+          --yay = scanl1 (\a b -> cond (a < b) b (-1)) adjustedIndexArray'
         in
           T2 yay count
 
@@ -118,7 +113,9 @@ initialPartition points =
           -- adjustedIndexArray = zipWith aBitOfHelp indexedArray isLower
           adjustedIndexArray = scanl1 (+) mapped
           adjustedIndexArray' = map (+ (-1)) adjustedIndexArray
-          yay = scanl1 (\a b -> cond (a < b) b (-1)) adjustedIndexArray'
+          yay = zipWith (\a isLowerCondition -> cond isLowerCondition a (-1)) adjustedIndexArray' isLower
+          --yay = tail (scanl (\a b -> cond (a < b) b (-1)) (-1) adjustedIndexArray')
+
         in
           T2 yay count
 
@@ -131,12 +128,12 @@ initialPartition points =
         in mapped
 
       halp1 :: Exp (Int, Int) -> Exp (Maybe DIM1)
-      halp1 (T2 num1 num2)  =
-        if num1 /= -1
-          then lift (Just (Z:. num1 + 1))
+      halp1 (T2 upperNum lowerNum)  =
+        if upperNum /= -1
+          then lift (Just (Z:. upperNum + 1))
           else
-            if num2 /= -1
-              then lift (Just (Z:. (num2 + 2 + unlift (the countUpper))))
+            if lowerNum /= -1
+              then lift (Just (Z:. (lowerNum + 2 + unlift (the countUpper))))
               else
                 constant Nothing
 
@@ -150,16 +147,16 @@ initialPartition points =
         in
           imap (\ix b -> cond
           (unindex1 ix == constant 0 ||
-          ix == index1 (totalLength - 1)) p1 
+          ix == index1 (totalLength - 1)) p1
           (cond (ix == index1 (1 + the countUpper)) p2 b))
             --(newPoints ! ix == undef)
                listWithoutPoints
-        
-      
+
+
 
       headFlags :: Acc (Vector Bool)
       headFlags =
-          generate (index1 totalLength) 
+          generate (index1 totalLength)
           (\ix -> cond (unindex1 ix    == constant 0 ||
                         ix             == index1 (totalLength - 1) ||
                         newPoints ! ix == p2)
@@ -167,6 +164,8 @@ initialPartition points =
 
   in
   T2 headFlags newPoints
+
+  --T2 headFlags newPoints
 
 
 -- The core of the algorithm processes all line segments at once in
