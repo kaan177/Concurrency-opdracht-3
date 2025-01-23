@@ -156,12 +156,32 @@ initialPartition points =
 partition :: Acc SegmentedPoints -> Acc SegmentedPoints
 partition (T2 headFlags points) =
   let
-    
+
     -- this creates a list of booleans that are true if the point is left of the segment that it is in.
-    zipped = zip3 (propagateL headFlags points) (propagateR headFlags points) points
-    isLeftOfLine = map (\(T3 l1 l2 point) -> pointIsLeftOfLine (T2 l1 l2) point) zipped
-    distances = map (\(T3 l1 l2 point) -> nonNormalizedDistance (T2 l1 l2) point) zipped
+    distances =
+      let
+        zipped = zip3 (propagateL headFlags points) (propagateR headFlags points) points
+        isLeftOfLine = map (\(T3 l1 l2 point) -> pointIsLeftOfLine (T2 l1 l2) point) zipped
+      in
+        map (\(T3 l1 l2 point) -> nonNormalizedDistance (T2 l1 l2) point) zipped
+
+    maxFlags =
+      let
+        -- I propagate the max value to the left and right in each segment
+        test1 = segmentedScanl1 max headFlags distances
+        test2 = segmentedScanr1 max headFlags distances
+      in
+        -- Whenever the a and b are the same, the value is the highest value in that segment
+        -- not sure if checking for 0 is nessecary here
+        -- I'll look into it later on if we have time left
+        zipWith (curry (\(T2 a b) -> cond (a == b && (a /= constant 0) && (b /= constant 0)) (constant True) (constant False))) test1 test2
     
+    newFlags = zipWith (curry (\(T2 a b) -> cond (a || b) (constant True) (constant False))) headFlags maxFlags
+
+
+
+    indexarray' = scanl (\a _ -> a + 1) (constant 0) headFlags
+
     -- yay = segmentedScanl1 (\(T3 l1 l2 _) (T3 flag b2 point) -> T3 flag b2 c2) headFlags zipped
   in
     error "TODO: partition"
