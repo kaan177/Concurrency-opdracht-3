@@ -118,15 +118,10 @@ initialPartition points =
       destination :: Acc (Vector (Maybe DIM1))
       destination = 
         let
-          startUpper = constant (1 :: Int)
-          startLower = startUpper +  constant (1 :: Int) -- + countUpper 
-
           zipOfsets = zip offsetUpper offsetLower
-
           mapped = map halp1 zipOfsets
 
-        in mapped --error "TODO: compute the index in the result array for each point (if it is present)"
-        
+        in mapped 
       
       halp1 :: Exp (Int, Int) -> Exp (Maybe DIM1)
       halp1 (T2 num1 num2)  = 
@@ -137,9 +132,7 @@ initialPartition points =
               then constant(Just (Z:. (unlift num1 + 2 + unlift (the countUpper))))
               else
                 constant Nothing
-
-      makeDIM1 :: Exp Int -> Exp (Maybe DIM1)
-      makeDIM1 num1  = constant (Just (Z:. unlift num1))
+                
 
       newPoints :: Acc (Vector Point)
       newPoints = error "TODO: place each point into its corresponding segment of the result"
