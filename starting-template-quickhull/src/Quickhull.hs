@@ -137,13 +137,13 @@ initialPartition points =
       newPoints :: Acc (Vector Point)
       newPoints =
         let
-          list = fill (constant (Z:. totalLength)) undef
+          list = fill (index1 totalLength) undef
         in
           permute const list (destination !) points
 
       headFlags :: Acc (Vector Bool)
       headFlags = 
-          generate (constant (Z:. unlift totalLength)) (\ix -> cond (
+          generate (index1 totalLength) (\ix -> cond (
             unindex1 ix == constant 0 || 
             --unindex1 ix == constant totalLength ||
             newPoints ! ix == p2) 
