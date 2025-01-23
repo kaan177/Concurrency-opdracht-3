@@ -126,14 +126,14 @@ initialPartition points =
       halp1 :: Exp (Int, Int) -> Exp (Maybe DIM1)
       halp1 (T2 num1 num2)  =
         if num1 /= constant (-1)
-          then constant (Just (Z:. (1 + unlift num1)))
+          then lift (Just (Z:. (1 + num1)))
           else
             if num2 /= -1
-              then constant (Just (Z:. (unlift num1 + 2 + unlift (the countUpper))))
+              then lift (Just (Z:. (num1 + 2 + unlift (the countUpper))))
               else
                 constant Nothing
 
-      totalLength = (3 + unlift (the countUpper) + unlift (the countLower))
+      totalLength = (3 + the countUpper + the countLower)
       newPoints :: Acc (Vector Point)
       newPoints =
         let
@@ -143,9 +143,9 @@ initialPartition points =
 
       headFlags :: Acc (Vector Bool)
       headFlags = 
-          generate (constant (Z:. totalLength)) (\ix -> cond (
+          generate (constant (Z:. unlift totalLength)) (\ix -> cond (
             unindex1 ix == constant 0 || 
-            unindex1 ix == constant totalLength ||
+            --unindex1 ix == constant totalLength ||
             newPoints ! ix == p2) 
             (constant True) (constant False))
           
