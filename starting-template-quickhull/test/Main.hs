@@ -189,6 +189,7 @@ prop_partition = property $ do
       flags   = True : replicate nus False ++ [True] ++ replicate nvs False ++ [True]
       points  = p1   : us'                 ++ [p2]   ++ vs'                 ++ [p1]
   annotate (show points)
+  annotate (show flags)
 
   let
       !go     = runN partition
@@ -246,7 +247,8 @@ prop_trapezoid = property $ do
       n       = length ps' + 2
       input   = (x1, y12) : (x2, y12) : ps'
       result  = go (fromList (Z :. n) input)
-
+  annotate $ show input
+  annotate $ show result
   annotate "If this test fails, you probably have a problem in partition"
   length (toList result) === 4
 

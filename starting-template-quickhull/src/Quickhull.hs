@@ -70,7 +70,7 @@ initialPartition points =
   let
 
       leftMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa < xb) a (cond (xa == xb) (cond (ya < yb) a b) b)
-      rightMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa > xb) a (cond (xa == xb) (cond (ya < yb) a b) b)
+      rightMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa > xb) a (cond (xa == xb) (cond (ya > yb) a b) b)
       p1, p2 :: Exp Point
       -- locate the left-most point
       p1 = the $ fold leftMostTest (constant (maxBound::Int, 0)) points
@@ -162,11 +162,8 @@ initialPartition points =
                         ix             == index1 (totalLength - 1) ||
                         newPoints ! ix == p2)
                           (constant True) (constant False))
-
   in
-  T2 headFlags newPoints
-
-  --T2 headFlags newPoints
+    T2 headFlags newPoints
 
 
 -- The core of the algorithm processes all line segments at once in
@@ -194,23 +191,31 @@ partition (T2 headFlags points) =
       in
         zipWith (\(T3 l1 l2 point) b -> cond (b == constant True) (nonNormalizedDistance (T2 l1 l2) point) (constant (-1))) zipped isLeftOfLine
 
+
+    maxHelper :: Exp (Bool, Bool) -> Exp (Bool, Bool) -> Exp (Bool, Bool)
+    maxHelper (T2 _ prevSeen) (T2 nextPos nextSeen) = if prevSeen
+        then
+          T2 (constant False) (constant True)
+        else
+          if nextPos
+            then
+              T2 (constant True) (constant True)
+            else
+              T2 (constant False) (constant False)
+
+
     -- flags of the positions where the distances is highest
     maxFlags =
       let
-        -- I propagate the max value to the left and right in each segment
-
-        -- I have 0 fucking clue why this works
-        -- If there are any problems later on, it is going to be here probably
-
-        test1 = segmentedScanl1 max headFlags distances
-        test2 = segmentedScanr1 max headFlags distances
-        zipped = zipWith (curry (\(T2 a b) -> cond (a == b && (a /= constant (0::Int)) && (b /= constant (0::Int))) (constant True) (constant False))) test1 test2
-        headFlagsToFalse = zipWith (\flag maxBool -> cond flag (constant False) maxBool) headFlags zipped
-        onlyTrueOnMaxValues = segmentedScanl1 (\a b -> cond a (constant False) b) headFlags headFlagsToFalse
-        fuckThisShit = segmentedScanl1 (\a b -> cond a a b) headFlags onlyTrueOnMaxValues
-        end = zipWith (\a b -> cond (b && a == constant False) a b) (shiftHeadFlagsL fuckThisShit) onlyTrueOnMaxValues
+        yay = segmentedScanl1 (\a b -> if a > b then a else b) headFlags distances
+        yay2 = propagateR (shiftHeadFlagsL headFlags) yay
+        yay3 = zipWith (==) distances yay2
+        falseList = fill (index1 (length distances)) (constant False)
+        zipped = zip yay3 falseList
+        yay4 = segmentedScanl1 helper headFlags zipped
+        end = map fst yay4
       in
-        end
+        zipWith (\max' head -> if head then constant False else max') end headFlags
 
     -- a complete list of all the new flags at their old positions
     -- check if not -1 -1
@@ -256,8 +261,10 @@ partition (T2 headFlags points) =
         count' = imap (\ix num -> cond (headFlags ! ix) (-1) num) count
 
         totalCount = fold (+) 0 mapped
+
+        offsetLower'' = imap (\ix a -> if isInLowerHalf ! ix then a else (-1)) offsetLower'
       in
-        T3 offsetLower' count' totalCount
+        T3 offsetLower'' count' totalCount
 
     offsetUpper :: Acc (Vector Int)
     segmentedCountUpper :: Acc (Vector Int)
@@ -273,8 +280,10 @@ partition (T2 headFlags points) =
         count' = imap (\ix num -> cond (headFlags ! ix) (-1) num) count
 
         totalCount = fold (+) 0 mapped
+
+        offsetUpper'' = imap (\ix a -> if isInUpperHalf ! ix then a else (-1)) offsetUpper'
       in
-        T3 offsetUpper' count' totalCount
+        T3 offsetUpper'' count' totalCount
 
     totalSize :: Exp Int
     totalSize =
@@ -287,32 +296,44 @@ partition (T2 headFlags points) =
 
 
     newHeadFlagIndexes :: Acc (Vector Int)
-    newHeadFlagIndexes = 
+    newHeadFlagIndexes =
       let
+        addIfNot :: Exp Int -> Exp Int -> Exp Int
+        addIfNot count a = if count == (-1) then a else a + count
         doLowerStuff = zipWith (\flag lowerCount -> cond flag 0 lowerCount) newFlags segmentedCountLower
         doUpperStuff = zipWith (\flag upperCount -> cond flag 0 upperCount) newFlags segmentedCountUpper
 
         addLowerOrUpperCount :: Exp DIM1 -> Exp Int -> Exp Int
-        addLowerOrUpperCount ix a = 
+        addLowerOrUpperCount ix a =
+          -- first we check if it is a flag
           if newFlags ! ix
-            then 
-              if maxFlags ! ix && segmentedCountLower ! ix /= (-1)
+            then
+              -- if last element
+              if ix == index1 (length segmentedCountLower)
                 then
-                  segmentedCountLower ! ix + a
+                  addIfNot (segmentedCountUpper ! index1 (unindex1 ix + constant (-1))) a
                 else
-                  if headFlags ! ix && segmentedCountUpper ! ix /= (-1)
+                  if ix == index1 0
                     then
-                      if ix == index1 0
-                        then a
-                      else
-                        -- this takes the index at ix-1
-                        (segmentedCountUpper ! index1 (unindex1 ix + constant (-1))) + a
-                    else
                       a
+                    else
+                      -- if it is a new flag
+                      if maxFlags ! ix
+                        then
+                          addIfNot (segmentedCountLower ! ix) a
+                        else
+                          if headFlags ! ix
+                            then
+                              addIfNot (segmentedCountUpper ! index1 (unindex1 ix + constant (-1))) a
+                            else
+                              a
             else
               a
+
         mapped = map (\b -> if b then constant (1 :: Int) else constant 0) newFlags
+
         mapped' = imap addLowerOrUpperCount mapped
+
         flagsSeenAtEachLocation = map (+ (-1)) (scanl1 (+) mapped')
       in
         flagsSeenAtEachLocation
@@ -321,61 +342,62 @@ partition (T2 headFlags points) =
     mapLower =
       let
         halp :: Exp DIM1 -> Exp Int -> Exp (Maybe DIM1)
-        halp ix a = 
-          if 
+        halp ix a =
+          if
             offsetLower ! ix /= (-1)
           then
             lift (Just (Z:. a + offsetLower ! ix))
-          else 
+          else
             constant Nothing
         flags = map (+1) (propagateL headFlags newHeadFlagIndexes)
         yay = imap halp flags
-      in 
+      in
         yay
-    
+
     mapUpper :: Acc (Vector (Maybe DIM1))
     mapUpper =
       let
         halp :: Exp DIM1 -> Exp Int -> Exp (Maybe DIM1)
-        halp ix a = 
-          if 
+        halp ix a =
+          if
             offsetUpper ! ix /= (-1)
           then
             lift (Just (Z:. a + offsetUpper ! ix))
-          else 
+          else
             constant Nothing
-        flags = map (+1) (propagateL maxFlags newHeadFlagIndexes)
+
+        flags = map (+1) $ propagateL headFlags (propagateR maxFlags newHeadFlagIndexes)
         yay = imap halp flags
-      in 
+      in
         yay
-    
+
     mapFlags :: Acc (Vector (Maybe DIM1))
     mapFlags =
-      let 
+      let
         halp :: Exp DIM1 -> Exp Int -> Exp (Maybe DIM1)
-        halp ix a = 
-          if 
+        halp ix a =
+          if
             newFlags ! ix
           then
             lift (Just (Z:. a))
-          else 
+          else
             constant Nothing
         yay = imap halp newHeadFlagIndexes
-      in 
+      in
         yay
-    
-    halp :: Exp (Maybe DIM1) -> Exp (Maybe DIM1) -> Exp (Maybe DIM1) -> Exp (Maybe DIM1)
-    halp a b c = if isNothing a && isNothing b
+
+    destinationHelper :: Exp (Maybe DIM1) -> Exp (Maybe DIM1) -> Exp (Maybe DIM1) -> Exp (Maybe DIM1)
+    destinationHelper a b c = if isNothing a && isNothing b
       then
         c
       else
         if isNothing b
           then a
-        else 
+        else
           b
-        
 
-    destination = zipWith3 halp mapLower mapUpper mapFlags
+
+    destination = zipWith3 destinationHelper mapLower mapUpper mapFlags
 
 
     newPoints :: Acc (Vector Point)
@@ -395,39 +417,78 @@ partition (T2 headFlags points) =
         scatter newHeadFlagIndexes falseList trueList
 
   in
-    -- atrace "" $
-    -- atraceArray "start" points $
-    -- atrace "" $
-    -- atraceArray "distances" distances $
-    -- atraceArray "max" maxFlags $
-    -- atraceArray "leftLineSegmented" leftLineInEachSegment $
-    -- atraceArray "rightLineSegmented" rightLineInEachSegment $
-    -- atrace "" $
-    -- atraceArray "offsetLower" offsetLower $
-    -- atraceArray "segmentedCountLower" segmentedCountLower $
-    -- atraceArray "totalCountLower" totalCountLower $
-    -- atrace "" $
-    -- atraceArray "offsetUpper" offsetUpper $
-    -- atraceArray "segmentedCountUpper" segmentedCountUpper $
-    -- atraceArray "totalCountUpper" totalCountUpper $
-    -- atrace "" $
-    -- atraceArray "size" (unit totalSize) $
-    -- atraceArray "newHeadFlagIndexes" newHeadFlagIndexes $
-    -- atraceArray "mapLower" mapLower $
-    -- atraceArray "mapUpper" mapUpper $
-    -- atraceArray "mapFlags" mapFlags $
-    -- atrace "" $
-    -- atraceArray "destination" destination $
-    -- atraceArray "newPoints" newPoints $
-    -- atraceArray "endFlags" endFlags $
+    atrace "" $
+    atraceArray "start" points $
+    atraceArray "headFlags" headFlags $
+    atrace "" $
+    atraceArray "distances" distances $
+    atraceArray "max" maxFlags $
+    atraceArray "leftLineSegmented" leftLineInEachSegment $
+    atraceArray "rightLineSegmented" rightLineInEachSegment $
+    atrace "" $
+    atraceArray "offsetLower" offsetLower $
+    atraceArray "segmentedCountLower" segmentedCountLower $
+    atraceArray "totalCountLower" totalCountLower $
+    atrace "" $
+    atraceArray "offsetUpper" offsetUpper $
+    atraceArray "segmentedCountUpper" segmentedCountUpper $
+    atraceArray "totalCountUpper" totalCountUpper $
+    atrace "" $
+    atraceArray "size" (unit totalSize) $
+    atrace "" $
+    atraceArray "mapLower" mapLower $
+    atraceArray "mapUpper" mapUpper $
+    atraceArray "mapFlags" mapFlags $
+    atrace "" $
+    atraceArray "allFlags" newFlags $
+    atraceArray "newHeadFlagIndexes" newHeadFlagIndexes $
+    atrace "" $
+    atraceArray "destination" destination $
+    atraceArray "newPoints" newPoints $
+    atraceArray "endFlags" endFlags $
     T2 endFlags newPoints
 
 
 -- TESTING STUFF
 
-testFlags = use (fromList (Z:.8) [True, False, False, False, True, False, False, True])
+-- maxTest :: Acc (Vector Bool)
+
+
+helper :: Exp (Bool, Bool) -> Exp (Bool, Bool) -> Exp (Bool, Bool)
+helper (T2 _ prevSeen) (T2 nextPos nextSeen) = if prevSeen
+        then
+          T2 (constant False) (constant True)
+        else
+          if nextPos
+            then
+              T2 (constant True) (constant True)
+            else
+              T2 (constant False) (constant False)
+
+maxTest =
+  let
+    flags = testFlags
+    distances = testList
+
+    yay = segmentedScanl1 (\a b -> if a > b then a else b) flags distances
+    yay2 = propagateR (shiftHeadFlagsL flags) yay
+    yay3 = zipWith (==) distances yay2
+    falseList = fill (index1 (length distances)) (constant False)
+    zipped = zip yay3 falseList
+    yay4 = segmentedScanl1 helper flags zipped
+    end = map fst yay4
+  in
+    zipWith (\max' head -> if head then constant False else max') end flags
+
+
+testFlags = use (fromList (Z:.8) [True, False, True, False, False, False, False, True])
 testList :: Acc (Vector Int)
-testList = use (fromList (Z:.8) [0, 1, 1, 0, 0, 1, 0, 0])
+
+testList = use (fromList (Z:.8) [-1, 2, -1, 10, 10, -1, 11, -1])
+
+testPoints :: Acc (Vector Point)
+testPoints = use (fromList (Z:.5) [(-5, 0), (1, 2), (3, 0), (2, 1), (-3, 2)])
+
 leftLineInEachSegment :: Acc (Array DIM1 (Int, Int))
 leftLineInEachSegment =
   let
@@ -461,14 +522,21 @@ quickhull :: Acc (Vector Point) -> Acc (Vector Point)
 quickhull points =
   let
     initial = initialPartition points
-  in  asnd (whileLoopPartition initial)
+    hull = tail $ asnd (whileLoopPartition initial)
+  in atraceArray "END" hull hull
 
 whileLoopPartition :: Acc SegmentedPoints -> Acc SegmentedPoints
-whileLoopPartition = awhile (fold (&&) (constant True) . afst) partition
+whileLoopPartition = awhile (fold (||) (constant False) . map not . afst) partition
 -- Helper functions
 -- ----------------
 
-
+test :: (Vector Bool, Vector Point)
+test =
+  let
+    flags = use (fromList (Z:.8)  [True,True,False,False,False,False,False,True]) :: Acc (Vector Bool)
+    points = use (fromList (Z:.8) [(-476,-94),(168,-837),(-474,-973),(-475,-711),(-475,-710),(-475,-708),(-429,-1024),(-476,-94)]) :: Acc (Vector Point)
+  in
+    run $ partition (T2 flags points)
 
 propagateL :: Elt a => Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
 propagateL = segmentedScanl1 const
