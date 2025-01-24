@@ -189,7 +189,7 @@ partition (T2 headFlags points) =
     distances :: Acc (Vector Int)
     distances =
       let
-        zipped = atrace "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" $ zip3 (propagateL headFlags points) (propagateR headFlags points) points
+        zipped = zip3 (propagateL headFlags points) (propagateR headFlags points) points
         isLeftOfLine = map (\(T3 l1 l2 point) -> pointIsLeftOfLine (T2 l1 l2) point) zipped
       in
         zipWith (\(T3 l1 l2 point) b -> cond (b == constant True) (nonNormalizedDistance (T2 l1 l2) point) (constant (-1))) zipped isLeftOfLine
@@ -198,7 +198,7 @@ partition (T2 headFlags points) =
     maxFlags =
       let
         -- I propagate the max value to the left and right in each segment
-        test1 = atrace "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" $ segmentedScanl1 max headFlags distances
+        test1 = segmentedScanl1 max headFlags distances
         test2 = segmentedScanr1 max headFlags distances
       in
         -- Whenever the a and b are the same, the value is the highest value in that segment
@@ -289,8 +289,10 @@ partition (T2 headFlags points) =
     test = generate (index1 totalSize) (\_ -> badPoint)
     test1 = generate (index1 5) (\_ -> constant False)
   in
-    atraceArray "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" test $
-    (T2 test1 test)
+    atraceArray "distances" distances $
+    atraceArray "leftLineSegmented" leftLineInEachSegment $
+    atraceArray "rightLineSegmented" rightLineInEachSegment $
+    T2 test1 test
 
 
 -- TESTING STUFF
