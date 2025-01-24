@@ -275,7 +275,7 @@ partition (T2 headFlags points) =
       in
         T3 offsetUpper' count' totalCount
 
-
+    totalSize :: Exp Int
     totalSize =
       let
         flags = the newFlagCount
@@ -285,16 +285,36 @@ partition (T2 headFlags points) =
         flags + lower + upper
 
 
-
     newHeadFlagIndexes :: Acc (Vector Int)
     newHeadFlagIndexes = 
       let
         doLowerStuff = zipWith (\flag lowerCount -> cond flag 0 lowerCount) newFlags segmentedCountLower
         doUpperStuff = zipWith (\flag upperCount -> cond flag 0 upperCount) newFlags segmentedCountUpper
 
-        yay = undefined
+        test :: Exp DIM1 -> Exp Int -> Exp Int
+        test ix a = 
+          if newFlags ! ix
+            then 
+              if maxFlags ! ix && segmentedCountLower ! ix /= (-1)
+                then
+                  segmentedCountLower ! ix + a
+                else
+                  if headFlags ! ix && segmentedCountUpper ! ix /= (-1)
+                    then
+                      if ix == index1 0
+                        then a
+                      else
+                        -- this takes the index at ix-1
+                        (segmentedCountUpper ! index1 (unindex1 ix + constant (-1))) + a
+                    else
+                      a
+            else
+              a
+        mapped = map (\b -> if b then constant (1 :: Int) else constant 0) newFlags
+        mapped' = imap test mapped
+        flagsSeenAtEachLocation = map (+ (-1)) (scanl1 (+) mapped')
       in
-        doLowerStuff
+        flagsSeenAtEachLocation
     
 
     test = generate (index1 totalSize) (\_ -> badPoint)
@@ -390,6 +410,25 @@ shiftHeadFlagsR flags =
       i = unindex1 ix
     in
       cond (i == 0) (constant True) (flags ! index1 (i - 1))
+
+shiftL :: Acc (Vector Bool) -> Acc (Vector Int) -> Acc (Vector Int)
+shiftL flags list =
+  generate (index1 (length flags)) $ \ix ->
+    let
+      i = unindex1 ix
+    in
+      cond (i == length flags - 1) (constant 0) (list ! index1 (i + 1))
+
+shiftR :: Acc (Vector Bool) -> Acc (Vector Int) -> Acc (Vector Int)
+shiftR flags list =
+  generate (index1 (length flags)) $ \ix ->
+    let
+      i = unindex1 ix
+    in
+      cond (i == length flags - 1) (constant 0) (list ! index1 (i + 1))
+
+
+
 
 segmentedScanl1 :: Elt a => (Exp a -> Exp a -> Exp a) -> Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
 segmentedScanl1 f headFlags values =
