@@ -291,8 +291,8 @@ partition (T2 headFlags points) =
         doLowerStuff = zipWith (\flag lowerCount -> cond flag 0 lowerCount) newFlags segmentedCountLower
         doUpperStuff = zipWith (\flag upperCount -> cond flag 0 upperCount) newFlags segmentedCountUpper
 
-        test :: Exp DIM1 -> Exp Int -> Exp Int
-        test ix a = 
+        addLowerOrUpperCount :: Exp DIM1 -> Exp Int -> Exp Int
+        addLowerOrUpperCount ix a = 
           if newFlags ! ix
             then 
               if maxFlags ! ix && segmentedCountLower ! ix /= (-1)
@@ -311,11 +311,42 @@ partition (T2 headFlags points) =
             else
               a
         mapped = map (\b -> if b then constant (1 :: Int) else constant 0) newFlags
-        mapped' = imap test mapped
+        mapped' = imap addLowerOrUpperCount mapped
         flagsSeenAtEachLocation = map (+ (-1)) (scanl1 (+) mapped')
       in
         flagsSeenAtEachLocation
+
+    mapLower :: Acc (Vector Int)
+    mapLower =
+      let
+        halp :: Exp DIM1 -> Exp Int -> Exp Int
+        halp ix a = 
+          if 
+            offsetLower ! ix /= (-1)
+          then
+            a + offsetLower ! ix
+          else 
+            a
+        flags = map (+1) (propagateL headFlags newHeadFlagIndexes)
+        yay = imap halp flags
+      in 
+        yay
     
+    mapUpper :: Acc (Vector Int)
+    mapUpper =
+      let
+        halp :: Exp DIM1 -> Exp Int -> Exp Int
+        halp ix a = 
+          if 
+            offsetUpper ! ix /= (-1)
+          then
+            a + offsetUpper ! ix
+          else 
+            a
+        flags = map (+1) (propagateL maxFlags newHeadFlagIndexes)
+        yay = imap halp flags
+      in 
+        yay
 
     test = generate (index1 totalSize) (\_ -> badPoint)
     test1 = generate (index1 5) (\_ -> constant False)
@@ -337,7 +368,9 @@ partition (T2 headFlags points) =
     atraceArray "totalCountUpper" totalCountUpper $
     atrace "" $
     atraceArray "size" (unit totalSize) $
-    atraceArray "test" (newHeadFlagIndexes) $
+    atraceArray "headFlagIndexes" newHeadFlagIndexes $
+    atraceArray "mapLower" mapLower $
+    atraceArray "mapUpper" mapUpper $
     T2 test1 test
 
 
