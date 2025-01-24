@@ -67,8 +67,9 @@ type SegmentedPoints = (Vector Bool, Vector Point)
 initialPartition :: Acc (Vector Point) ->  Acc SegmentedPoints
 initialPartition points =
   let
-      leftMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa < xb) (cond (ya < yb) a b) b
-      rightMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa > xb) (cond (ya < yb) a b) b
+
+      leftMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa < xb) a (cond (xa == xb) (cond (ya < yb) a b) b)
+      rightMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa > xb) a (cond (xa == xb) (cond (ya < yb) a b) b)
       p1, p2 :: Exp Point
       -- locate the left-most point
       p1 = the $ fold leftMostTest (constant (maxBound::Int, 0)) points
@@ -180,15 +181,20 @@ initialPartition points =
 partition :: Acc SegmentedPoints -> Acc SegmentedPoints
 partition (T2 headFlags points) =
   let
-
-    -- this creates a list of booleans that are true if the point is left of the segment that it is in.
+    
+    -- distances contains a list of postive distances
+    -- if not left of the list, it is -1
+    -- not sure if checking for isLeftOfLine is ever useful
+    -- could probably be removed. (we'll have to think about it tomorrow)
+    distances :: Acc (Vector Int)
     distances =
       let
         zipped = zip3 (propagateL headFlags points) (propagateR headFlags points) points
         isLeftOfLine = map (\(T3 l1 l2 point) -> pointIsLeftOfLine (T2 l1 l2) point) zipped
       in
-        map (\(T3 l1 l2 point) -> nonNormalizedDistance (T2 l1 l2) point) zipped
+        zipWith (\(T3 l1 l2 point) b -> cond (b == constant True) (nonNormalizedDistance (T2 l1 l2) point) (constant (-1))) zipped isLeftOfLine
 
+    -- flags of the positions where the distances is highest
     maxFlags =
       let
         -- I propagate the max value to the left and right in each segment
@@ -198,23 +204,24 @@ partition (T2 headFlags points) =
         -- Whenever the a and b are the same, the value is the highest value in that segment
         -- not sure if checking for 0 is nessecary here
         -- I'll look into it later on if we have time left
+        -- not sure if this works if multiple distances overlap
         zipWith (curry (\(T2 a b) -> cond (a == b && (a /= constant (0::Int)) && (b /= constant (0::Int))) (constant True) (constant False))) test1 test2
 
+    -- a complete list of all the new flags
     newFlags = zipWith (curry (\(T2 a b) -> cond (a || b) (constant True) (constant False))) headFlags maxFlags
 
-
+    -- not sure what this is??
     canBePartOfNewHull =
       let
         zipped = zip3 (propagateL newFlags points) (propagateR newFlags points) points
         -- left = propagateR 
-
-
       in
         map (\(T3 l1 l2 point) -> pointIsLeftOfLine (T2 l1 l2) point) zipped
 
-    -- indexarray' = scanl (\a _ -> a + 1) (constant (0::Int)) headFlags
 
 
+    -- copied stuff from the initial partition, not sure if any of this is useful
+      
     -- this should be done after things have been removed
     -- offset for each segment
     -- segmentedOffset = propagateR indexarray' newFlags
