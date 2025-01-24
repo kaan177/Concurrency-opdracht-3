@@ -75,8 +75,8 @@ initialPartition points =
       p2 = the $ fold rightMostTest (constant (minBound::Int, 0)) points
 
       -- determine which points lie most to the left and right while acounting for equal x values.
-      leftMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa < xb) a (cond (xa == xb) (cond (ya < yb) a b) b)
-      rightMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa > xb) a (cond (xa == xb) (cond (ya > yb) a b) b)
+      leftMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa < xb) a (cond (xa == xb) (cond (ya > yb) a b) b)
+      rightMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa > xb) a (cond (xa == xb) (cond (ya < yb) a b) b)
 
       isUpper :: Acc (Vector Bool)
       -- determine which points lie above the line (p₁, p₂)
@@ -202,15 +202,19 @@ partition (T2 headFlags points) =
     -- flags of the positions where the distances is highest
     maxFlags =
       let
-        yay = segmentedScanl1 (\a b -> if a > b then a else b) headFlags distances
-        yay2 = propagateR (shiftHeadFlagsL headFlags) yay
-        yay3 = zipWith (==) distances yay2
+        progagateMaxValue = segmentedScanl1 (\a b -> if a > b then a else b) headFlags distances
+        progagatedLeft = propagateR (shiftHeadFlagsL headFlags) progagateMaxValue
+        maxValues = zipWith (==) distances progagatedLeft
+
+        
         falseList = fill (index1 (length distances)) (constant False)
-        zipped = zip yay3 falseList
+
+        zipped = zip maxValues falseList
         yay4 = segmentedScanl1 helper headFlags zipped
         end = map fst yay4
       in
-        zipWith (\max' head -> if head then constant False else max') end headFlags
+        end
+        --zipWith (\max' head -> if head then constant False else max') end headFlags
 
     -- a complete list of all the new flags at their old positions
     -- check if not -1 -1
@@ -412,35 +416,35 @@ partition (T2 headFlags points) =
         scatter newHeadFlagIndexes falseList trueList
 
   in
-    atrace "" $
-    atraceArray "start" points $
-    atraceArray "headFlags" headFlags $
-    atrace "" $
-    atraceArray "distances" distances $
-    atraceArray "max" maxFlags $
-    atraceArray "leftLineSegmented" leftLineInEachSegment $
-    atraceArray "rightLineSegmented" rightLineInEachSegment $
-    atrace "" $
-    atraceArray "offsetLower" offsetLower $
-    atraceArray "segmentedCountLower" segmentedCountLower $
-    atraceArray "totalCountLower" totalCountLower $
-    atrace "" $
-    atraceArray "offsetUpper" offsetUpper $
-    atraceArray "segmentedCountUpper" segmentedCountUpper $
-    atraceArray "totalCountUpper" totalCountUpper $
-    atrace "" $
-    atraceArray "size" (unit totalSize) $
-    atrace "" $
-    atraceArray "mapLower" mapLower $
-    atraceArray "mapUpper" mapUpper $
-    atraceArray "mapFlags" mapFlags $
-    atrace "" $
-    atraceArray "allFlags" newFlags $
-    atraceArray "newHeadFlagIndexes" newHeadFlagIndexes $
-    atrace "" $
-    atraceArray "destination" destination $
-    atraceArray "newPoints" newPoints $
-    atraceArray "endFlags" endFlags $
+    -- atrace "" $
+    -- atraceArray "start" points $
+    -- atraceArray "headFlags" headFlags $
+    -- atrace "" $
+    -- atraceArray "distances" distances $
+    -- atraceArray "max" maxFlags $
+    -- atraceArray "leftLineSegmented" leftLineInEachSegment $
+    -- atraceArray "rightLineSegmented" rightLineInEachSegment $
+    -- atrace "" $
+    -- atraceArray "offsetLower" offsetLower $
+    -- atraceArray "segmentedCountLower" segmentedCountLower $
+    -- atraceArray "totalCountLower" totalCountLower $
+    -- atrace "" $
+    -- atraceArray "offsetUpper" offsetUpper $
+    -- atraceArray "segmentedCountUpper" segmentedCountUpper $
+    -- atraceArray "totalCountUpper" totalCountUpper $
+    -- atrace "" $
+    -- atraceArray "size" (unit totalSize) $
+    -- atrace "" $
+    -- atraceArray "mapLower" mapLower $
+    -- atraceArray "mapUpper" mapUpper $
+    -- atraceArray "mapFlags" mapFlags $
+    -- atrace "" $
+    -- atraceArray "allFlags" newFlags $
+    -- atraceArray "newHeadFlagIndexes" newHeadFlagIndexes $
+    -- atrace "" $
+    -- atraceArray "destination" destination $
+    -- atraceArray "newPoints" newPoints $
+    -- atraceArray "endFlags" endFlags $
     T2 endFlags newPoints
 
 
