@@ -232,8 +232,9 @@ partition (T2 headFlags points) =
         imap (\ix (T2 a b) -> cond (headFlags ! ix) (T2 badPoint badPoint) (T2 a b)) zipped
 
     offsetLower :: Acc (Vector Int)
-    countLower  :: Acc (Vector Int)
-    T2 offsetLower countLower =
+    segmentedCountLower  :: Acc (Vector Int)
+    totalCountLower :: Acc (Scalar Int)
+    T3 offsetLower segmentedCountLower totalCountLower =
       let
         isInLowerHalf = zipWith pointIsLeftOfLine leftLineInEachSegment points
         mapped = map (\b -> if b then constant (1 :: Int) else constant 0) isInLowerHalf
@@ -241,12 +242,15 @@ partition (T2 headFlags points) =
         
         count = propagateR (shiftHeadFlagsL headFlags) offsetLower
         count' = imap (\ix num -> cond (headFlags ! ix) (-1) num) count
+
+        totalCount = fold (+) 0 mapped
       in
-        T2 offsetLower' count'
+        T3 offsetLower' count' totalCount
 
     offsetUpper :: Acc (Vector Int)
-    countUpper :: Acc (Vector Int)
-    T2 offsetUpper countUpper =
+    segmentedCountUpper :: Acc (Vector Int)
+    totalCountUpper :: Acc (Scalar Int)
+    T3 offsetUpper segmentedCountUpper totalCountUpper =
       let
         isInUpperHalf = zipWith pointIsLeftOfLine rightLineInEachSegment points
         mapped = map (\b -> if b then constant (1 :: Int) else constant 0) isInUpperHalf
@@ -255,9 +259,10 @@ partition (T2 headFlags points) =
         count = propagateR (shiftHeadFlagsL headFlags) offsetLower
         -- sets the count to -1 when the index is a headFlag
         count' = imap (\ix num -> cond (headFlags ! ix) (-1) num) count
-      in
-        T2 offsetUpper' count'
 
+        totalCount = fold (+) 0 mapped
+      in
+        T3 offsetUpper' count' totalCount
 
     newHeadFlagIndexes :: Acc (Vector Int)
     newHeadFlagIndexes = undefined
