@@ -178,7 +178,7 @@ initialPartition points =
 -- p in that segment lies to the left of (p₁,p₃) or the right of (p₂,p₃).
 -- These points are undecided.
 --
-partition :: Acc SegmentedPoints -> Acc (Scalar Int)
+partition :: Acc SegmentedPoints -> Acc SegmentedPoints
 partition (T2 headFlags points) =
   let
     
@@ -286,13 +286,11 @@ partition (T2 headFlags points) =
     newHeadFlagIndexes = undefined
 
 
-    test = generate (index1 (totalSize )) (\_ -> (badPoint))
-    test1 = generate (index1 5) (\_ -> (constant False))
-
+    test = generate (index1 totalSize) (\_ -> badPoint)
+    test1 = generate (index1 5) (\_ -> constant False)
   in
-    totalCountLower
-    -- atraceArray "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" test $
-    -- T2 test1 test
+    atraceArray "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" test $
+    (T2 test1 test)
 
 
 -- TESTING STUFF
