@@ -181,7 +181,7 @@ initialPartition points =
 partition :: Acc SegmentedPoints -> Acc SegmentedPoints
 partition (T2 headFlags points) =
   let
-    
+
     -- distances contains a list of postive distances
     -- if not left of the list, it is -1
     -- not sure if checking for isLeftOfLine is ever useful
@@ -212,8 +212,8 @@ partition (T2 headFlags points) =
     -- a complete list of all the new flags at their old positions
     -- check if not -1 -1
     newFlags = zipWith (curry (\(T2 a b) -> cond (a || b) (constant True) (constant False))) headFlags maxFlags
-    
-    newFlagCount = 
+
+    newFlagCount =
       let
         boolToOne = map (\b -> if b then constant (1 :: Int) else constant 0) newFlags
       in
@@ -227,7 +227,7 @@ partition (T2 headFlags points) =
       let
         test1 = propagateR newFlags points
         test2 = propagateL (shiftHeadFlagsR headFlags) test1
-        zipped = zip (propagateL headFlags points) test2 
+        zipped = zip (propagateL headFlags points) test2
       in
         imap (\ix (T2 a b) -> cond (headFlags ! ix) (T2 badPoint badPoint) (T2 a b)) zipped
 
@@ -248,7 +248,7 @@ partition (T2 headFlags points) =
         isInLowerHalf = zipWith pointIsLeftOfLine leftLineInEachSegment points :: Acc (Vector Bool)
         mapped = map (\b -> if b then constant (1 :: Int) else constant 0) isInLowerHalf :: Acc (Vector Int)
         offsetLower' = map (+ (-1 )) (segmentedScanl1 (+) headFlags mapped)
-        
+
         count = propagateR (shiftHeadFlagsL headFlags) offsetLower'
         count' = imap (\ix num -> cond (headFlags ! ix) (-1) num) count
 
@@ -264,7 +264,7 @@ partition (T2 headFlags points) =
         isInUpperHalf = zipWith pointIsLeftOfLine rightLineInEachSegment points
         mapped = map (\b -> if b then constant (1 :: Int) else constant 0) isInUpperHalf
         offsetUpper' = map (+ (-1 )) (segmentedScanl1 (+) headFlags mapped)
-        
+
         count = propagateR (shiftHeadFlagsL headFlags) offsetUpper'
         -- sets the count to -1 when the index is a headFlag
         count' = imap (\ix num -> cond (headFlags ! ix) (-1) num) count
@@ -272,16 +272,16 @@ partition (T2 headFlags points) =
         totalCount = fold (+) 0 mapped
       in
         T3 offsetUpper' count' totalCount
-    
-    
-    totalSize = 
-      let 
+
+
+    totalSize =
+      let
         flags = the newFlagCount
         lower = the totalCountLower
         upper = the totalCountUpper
-      in 
+      in
         flags + lower + upper
-    
+
 
 
     newHeadFlagIndexes :: Acc (Vector Int)
@@ -326,7 +326,7 @@ leftLineInEachSegment =
 
     test1 = propagateR newFlags points
     test2 = propagateL (shiftHeadFlagsR headFlags) test1
-    zipped = zip (propagateL headFlags points) test2 
+    zipped = zip (propagateL headFlags points) test2
   in
     imap (\ix (T2 a b) -> cond (headFlags ! ix) (T2 (-1) (-1)) (T2 a b)) zipped
 
@@ -347,11 +347,13 @@ rightLineInEachSegment =
 -- no undecided points remaining. What remains is the convex hull.
 --
 quickhull :: Acc (Vector Point) -> Acc (Vector Point)
-quickhull =
-  -- maak eerst initialpartition
-  -- als alle flags True zijn, return dan de points
-  error "TODO: quickhull"
+quickhull points =
+  let
+    initial = initialPartition points
+  in  asnd (whileLoopPartition initial)
 
+whileLoopPartition :: Acc SegmentedPoints -> Acc SegmentedPoints
+whileLoopPartition = awhile (fold (&&) (constant True) . afst) partition
 -- Helper functions
 -- ----------------
 
