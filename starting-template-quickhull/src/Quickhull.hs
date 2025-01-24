@@ -68,13 +68,16 @@ initialPartition :: Acc (Vector Point) ->  Acc SegmentedPoints
 initialPartition points =
   let
 
-      leftMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa < xb) a (cond (xa == xb) (cond (ya < yb) a b) b)
-      rightMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa > xb) a (cond (xa == xb) (cond (ya < yb) a b) b)
+      
       p1, p2 :: Exp Point
       -- locate the left-most point
       p1 = the $ fold leftMostTest (constant (maxBound::Int, 0)) points
       -- locate the right-most point
       p2 = the $ fold rightMostTest (constant (minBound::Int, 0)) points
+
+      -- determine which points lie most to the left and right while acounting for equal x values.
+      leftMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa < xb) a (cond (xa == xb) (cond (ya < yb) a b) b)
+      rightMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa > xb) a (cond (xa == xb) (cond (ya < yb) a b) b)
 
       isUpper :: Acc (Vector Bool)
       -- determine which points lie above the line (p₁, p₂)
@@ -83,8 +86,6 @@ initialPartition points =
       isLower :: Acc (Vector Bool)
       isLower = map (pointIsLeftOfLine (T2 p2 p1)) points
 
-      indexedArray = generate (index1 (length points)) unindex1
-
       --offsetUpper is net zo lang als de originele array. En alle false values hebben een -1 als index
       offsetUpper :: Acc (Vector Int)
       countUpper  :: Acc (Scalar Int)
@@ -92,16 +93,15 @@ initialPartition points =
         let
           mapped = map (\b -> if b then constant (1 :: Int) else constant 0) isUpper
           count = fold (+) 0 mapped
+
           adjustedIndexArray = scanl1 (+) mapped
           adjustedIndexArray' = map (+ (-1)) adjustedIndexArray
-          yay = zipWith (\a isUpperCondition -> cond isUpperCondition a (-1)) adjustedIndexArray' isUpper
-          --yay = scanl1 (\a b -> cond (a < b) b (-1)) adjustedIndexArray'
+
+          result = zipWith (\a isUpperCondition -> cond isUpperCondition a (-1)) adjustedIndexArray' isUpper
         in
-          T2 yay count
+          T2 result count
 
-      aBitOfHelp :: Exp Int -> Exp Bool -> Exp Int
-      aBitOfHelp index bool = if bool then index else constant (-1)
-
+      --offsetLower is net zo lang als de originele array. En alle false values hebben een -1 als index
       offsetLower :: Acc (Vector Int)
       countLower  :: Acc (Scalar Int)
       T2 offsetLower countLower =
@@ -109,26 +109,23 @@ initialPartition points =
           mapped = map (\b -> if b then constant (1 :: Int) else constant 0) isLower
           count = fold (+) 0 mapped
 
-          -- mapped' = map (\_ -> constant (1 :: Int)) isLower
-          -- indexarray = scanl1 (+) mapped'
-          -- adjustedIndexArray = zipWith aBitOfHelp indexedArray isLower
           adjustedIndexArray = scanl1 (+) mapped
           adjustedIndexArray' = map (+ (-1)) adjustedIndexArray
-          yay = zipWith (\a isLowerCondition -> cond isLowerCondition a (-1)) adjustedIndexArray' isLower
-          --yay = tail (scanl (\a b -> cond (a < b) b (-1)) (-1) adjustedIndexArray')
 
+          result = zipWith (\a isLowerCondition -> cond isLowerCondition a (-1)) adjustedIndexArray' isLower
         in
-          T2 yay count
+          T2 result count
 
       destination :: Acc (Vector (Maybe DIM1))
       destination =
         let
           zipOfsets = zip offsetUpper offsetLower
-          mapped = map halp1 zipOfsets
+          mapped = map determineIndex zipOfsets
         in mapped
-
-      halp1 :: Exp (Int, Int) -> Exp (Maybe DIM1)
-      halp1 (T2 upperNum lowerNum)  =
+      
+      
+      determineIndex :: Exp (Int, Int) -> Exp (Maybe DIM1)
+      determineIndex (T2 upperNum lowerNum)  =
         if upperNum /= -1
           then lift (Just (Z:. upperNum + 1))
           else
@@ -137,8 +134,10 @@ initialPartition points =
               else
                 constant Nothing
 
+      totalLength :: Exp Int
       totalLength = (3 + the countUpper + the countLower)
 
+      --This function first permutes all the values to the correct index. And then adds the flag points.
       newPoints :: Acc (Vector Point)
       newPoints =
         let
@@ -149,10 +148,7 @@ initialPartition points =
           (unindex1 ix == constant 0 ||
           ix == index1 (totalLength - 1)) p1
           (cond (ix == index1 (1 + the countUpper)) p2 b))
-            --(newPoints ! ix == undef)
                listWithoutPoints
-
-
 
       headFlags :: Acc (Vector Bool)
       headFlags =
@@ -165,7 +161,6 @@ initialPartition points =
   in
   T2 headFlags newPoints
 
-  --T2 headFlags newPoints
 
 
 -- The core of the algorithm processes all line segments at once in
@@ -188,10 +183,10 @@ partition (T2 headFlags points) =
     distances :: Acc (Vector Int)
     distances =
       let
-        zipped = zip3 (propagateL headFlags points) (propagateR headFlags points) points
-        isLeftOfLine = map (\(T3 l1 l2 point) -> pointIsLeftOfLine (T2 l1 l2) point) zipped
+        flaggedValues = zip3 (propagateL headFlags points) (propagateR headFlags points) points
+        isLeftOfLine = map (\(T3 l1 l2 point) -> pointIsLeftOfLine (T2 l1 l2) point) flaggedValues
       in
-        zipWith (\(T3 l1 l2 point) b -> cond (b == constant True) (nonNormalizedDistance (T2 l1 l2) point) (constant (-1))) zipped isLeftOfLine
+        zipWith (\(T3 l1 l2 point) b -> cond (b == constant True) (nonNormalizedDistance (T2 l1 l2) point) (constant (-1))) flaggedValues isLeftOfLine
 
     -- flags of the positions where the distances is highest
     maxFlags =
@@ -374,13 +369,14 @@ rightLineInEachSegment =
 
 -- The completed algorithm repeatedly partitions the points until there are
 -- no undecided points remaining. What remains is the convex hull.
---
+
 quickhull :: Acc (Vector Point) -> Acc (Vector Point)
 quickhull points =
   let
     initial = initialPartition points
   in  asnd (whileLoopPartition initial)
 
+-- The while-loop repeatedly partitions the points until all the points are part of the convex hull.
 whileLoopPartition :: Acc SegmentedPoints -> Acc SegmentedPoints
 whileLoopPartition = awhile (fold (&&) (constant True) . afst) partition
 -- Helper functions
@@ -394,14 +390,14 @@ propagateL = segmentedScanl1 const
 propagateR :: Elt a => Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
 propagateR = segmentedScanr1 const
 
--- these functions can be improved by using the permute function
+
 shiftHeadFlagsL :: Acc (Vector Bool) -> Acc (Vector Bool)
 shiftHeadFlagsL flags =
   generate (index1 (length flags)) $ \ix ->
     let
       i = unindex1 ix
     in
-      cond (i == length flags - 1) (constant True) (flags ! index1 (i + 1))
+      cond (i == length flags - 1) (constant True) (flags ! index1 (i + 1)) -- this is to go left
 
 shiftHeadFlagsR :: Acc (Vector Bool) -> Acc (Vector Bool)
 shiftHeadFlagsR flags =
@@ -409,51 +405,27 @@ shiftHeadFlagsR flags =
     let
       i = unindex1 ix
     in
-      cond (i == 0) (constant True) (flags ! index1 (i - 1))
-
-shiftL :: Acc (Vector Bool) -> Acc (Vector Int) -> Acc (Vector Int)
-shiftL flags list =
-  generate (index1 (length flags)) $ \ix ->
-    let
-      i = unindex1 ix
-    in
-      cond (i == length flags - 1) (constant 0) (list ! index1 (i + 1))
-
-shiftR :: Acc (Vector Bool) -> Acc (Vector Int) -> Acc (Vector Int)
-shiftR flags list =
-  generate (index1 (length flags)) $ \ix ->
-    let
-      i = unindex1 ix
-    in
-      cond (i == length flags - 1) (constant 0) (list ! index1 (i + 1))
+      cond (i == 0) (constant True) (flags ! index1 (i - 1)) -- this is to go right
 
 
-
-
+-- segmentedScanl1 and segmentedScanr1 are similar to scanl1 and scanr1, but they scan over segments.
 segmentedScanl1 :: Elt a => (Exp a -> Exp a -> Exp a) -> Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
-segmentedScanl1 f headFlags values =
+segmentedScanl1 scanFunction headFlags values =
   let
-    zipped = zip headFlags values
-    scanned = scanl1 (segmented f) zipped
+    flaggedValues = zip headFlags values
+    scannedSegments = scanl1 (segmented scanFunction) flaggedValues
     in
-      map snd scanned
+      map snd scannedSegments
+
 
 segmentedScanr1 :: Elt a => (Exp a -> Exp a -> Exp a) -> Acc (Vector Bool) -> Acc (Vector a) -> Acc (Vector a)
-segmentedScanr1 f headFlags values =
+segmentedScanr1 scanFunction headFlags values =
   let
-    zipped = zip headFlags values
-    scanned = scanr1 (flip (segmented f)) zipped
+    flaggedValues = zip headFlags values
+    scannedSegments = scanr1 (flip (segmented scanFunction)) flaggedValues  -- flip is needed because scanr1 is right-to-left
     in
-      map snd scanned
+      map snd scannedSegments
 
-
---Functies die je mag gebruiken (niet compleet)
---map
---Stencil
---Gather
---Scatter
---fold
---scan
 
 
 -- Given utility functions
@@ -475,11 +447,3 @@ nonNormalizedDistance (T2 (T2 x1 y1) (T2 x2 y2)) (T2 x y) = nx * x + ny * y - c
 
 segmented :: Elt a => (Exp a -> Exp a -> Exp a) -> Exp (Bool, a) -> Exp (Bool, a) -> Exp (Bool, a)
 segmented f (T2 aF aV) (T2 bF bV) = T2 (aF || bF) (bF ? (bV, f aV bV))
-
-
-
--- countTrue =
---   let
---     ones = fold (\a b -> cond (a == constant True) (b + 1) a) (constant (0::Int))
---   in
---     ones
