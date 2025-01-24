@@ -412,35 +412,35 @@ partition (T2 headFlags points) =
         scatter newHeadFlagIndexes falseList trueList
 
   in
-    atrace "" $
-    atraceArray "start" points $
-    atraceArray "headFlags" headFlags $
-    atrace "" $
-    atraceArray "distances" distances $
-    atraceArray "max" maxFlags $
-    atraceArray "leftLineSegmented" leftLineInEachSegment $
-    atraceArray "rightLineSegmented" rightLineInEachSegment $
-    atrace "" $
-    atraceArray "offsetLower" offsetLower $
-    atraceArray "segmentedCountLower" segmentedCountLower $
-    atraceArray "totalCountLower" totalCountLower $
-    atrace "" $
-    atraceArray "offsetUpper" offsetUpper $
-    atraceArray "segmentedCountUpper" segmentedCountUpper $
-    atraceArray "totalCountUpper" totalCountUpper $
-    atrace "" $
-    atraceArray "size" (unit totalSize) $
-    atrace "" $
-    atraceArray "mapLower" mapLower $
-    atraceArray "mapUpper" mapUpper $
-    atraceArray "mapFlags" mapFlags $
-    atrace "" $
-    atraceArray "allFlags" newFlags $
-    atraceArray "newHeadFlagIndexes" newHeadFlagIndexes $
-    atrace "" $
-    atraceArray "destination" destination $
-    atraceArray "newPoints" newPoints $
-    atraceArray "endFlags" endFlags $
+    -- atrace "" $
+    -- atraceArray "start" points $
+    -- atraceArray "headFlags" headFlags $
+    -- atrace "" $
+    -- atraceArray "distances" distances $
+    -- atraceArray "max" maxFlags $
+    -- atraceArray "leftLineSegmented" leftLineInEachSegment $
+    -- atraceArray "rightLineSegmented" rightLineInEachSegment $
+    -- atrace "" $
+    -- atraceArray "offsetLower" offsetLower $
+    -- atraceArray "segmentedCountLower" segmentedCountLower $
+    -- atraceArray "totalCountLower" totalCountLower $
+    -- atrace "" $
+    -- atraceArray "offsetUpper" offsetUpper $
+    -- atraceArray "segmentedCountUpper" segmentedCountUpper $
+    -- atraceArray "totalCountUpper" totalCountUpper $
+    -- atrace "" $
+    -- atraceArray "size" (unit totalSize) $
+    -- atrace "" $
+    -- atraceArray "mapLower" mapLower $
+    -- atraceArray "mapUpper" mapUpper $
+    -- atraceArray "mapFlags" mapFlags $
+    -- atrace "" $
+    -- atraceArray "allFlags" newFlags $
+    -- atraceArray "newHeadFlagIndexes" newHeadFlagIndexes $
+    -- atrace "" $
+    -- atraceArray "destination" destination $
+    -- atraceArray "newPoints" newPoints $
+    -- atraceArray "endFlags" endFlags $
     T2 endFlags newPoints
 
 
