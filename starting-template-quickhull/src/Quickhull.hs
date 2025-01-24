@@ -125,7 +125,6 @@ initialPartition points =
         let
           zipOfsets = zip offsetUpper offsetLower
           mapped = map halp1 zipOfsets
-
         in mapped
 
       halp1 :: Exp (Int, Int) -> Exp (Maybe DIM1)
@@ -197,17 +196,20 @@ partition (T2 headFlags points) =
     -- flags of the positions where the distances is highest
     maxFlags =
       let
-        
-
         -- I propagate the max value to the left and right in each segment
+
+        -- I have 0 fucking clue why this works
+        -- If there are any problems later on, it is going to be here probably
+
         test1 = segmentedScanl1 max headFlags distances
         test2 = segmentedScanr1 max headFlags distances
+        zipped = zipWith (curry (\(T2 a b) -> cond (a == b && (a /= constant (0::Int)) && (b /= constant (0::Int))) (constant True) (constant False))) test1 test2
+        headFlagsToFalse = zipWith (\flag maxBool -> cond flag (constant False) maxBool) headFlags zipped
+        onlyTrueOnMaxValues = segmentedScanl1 (\a b -> cond a (constant False) b) headFlags headFlagsToFalse
+        fuckThisShit = segmentedScanl1 (\a b -> cond a a b) headFlags onlyTrueOnMaxValues
+        end = zipWith (\a b -> cond (b && a == constant False) a b) (shiftHeadFlagsL fuckThisShit) onlyTrueOnMaxValues
       in
-        -- Whenever the a and b are the same, the value is the highest value in that segment
-        -- not sure if checking for 0 is nessecary here
-        -- I'll look into it later on if we have time left
-        -- not sure if this works if multiple distances overlap
-        zipWith (curry (\(T2 a b) -> cond (a == b && (a /= constant (0::Int)) && (b /= constant (0::Int))) (constant True) (constant False))) test1 test2
+        end
 
     -- a complete list of all the new flags at their old positions
     -- check if not -1 -1
@@ -249,7 +251,7 @@ partition (T2 headFlags points) =
         mapped = map (\b -> if b then constant (1 :: Int) else constant 0) isInLowerHalf :: Acc (Vector Int)
         offsetLower' = map (+ (-1 )) (segmentedScanl1 (+) headFlags mapped)
 
-        count = propagateR (shiftHeadFlagsL headFlags) offsetLower'
+        count = propagateR (shiftHeadFlagsL headFlags) (map (+ 1) offsetLower')
         count' = imap (\ix num -> cond (headFlags ! ix) (-1) num) count
 
         totalCount = fold (+) 0 mapped
@@ -265,7 +267,7 @@ partition (T2 headFlags points) =
         mapped = map (\b -> if b then constant (1 :: Int) else constant 0) isInUpperHalf
         offsetUpper' = map (+ (-1 )) (segmentedScanl1 (+) headFlags mapped)
 
-        count = propagateR (shiftHeadFlagsL headFlags) offsetUpper'
+        count = propagateR (shiftHeadFlagsL headFlags) (map (+1) offsetUpper')
         -- sets the count to -1 when the index is a headFlag
         count' = imap (\ix num -> cond (headFlags ! ix) (-1) num) count
 
@@ -285,9 +287,15 @@ partition (T2 headFlags points) =
 
 
     newHeadFlagIndexes :: Acc (Vector Int)
-    newHeadFlagIndexes = undefined
+    newHeadFlagIndexes = 
+      let
+        doLowerStuff = zipWith (\flag lowerCount -> cond flag 0 lowerCount) newFlags segmentedCountLower
+        doUpperStuff = zipWith (\flag upperCount -> cond flag 0 upperCount) newFlags segmentedCountUpper
 
-
+        yay = undefined
+      in
+        doLowerStuff
+    
 
     test = generate (index1 totalSize) (\_ -> badPoint)
     test1 = generate (index1 5) (\_ -> constant False)
@@ -309,6 +317,7 @@ partition (T2 headFlags points) =
     atraceArray "totalCountUpper" totalCountUpper $
     atrace "" $
     atraceArray "size" (unit totalSize) $
+    atraceArray "test" (newHeadFlagIndexes) $
     T2 test1 test
 
 
