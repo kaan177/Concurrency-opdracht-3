@@ -209,6 +209,11 @@ partition (T2 headFlags points) =
 
     -- a complete list of all the new flags at their old positions
     newFlags = zipWith (curry (\(T2 a b) -> cond (a || b) (constant True) (constant False))) headFlags maxFlags
+    newFlagCount = 
+      let
+        boolToOne = map (\b -> if b then constant (1 :: Int) else constant 0) newFlags
+      in
+        fold (+) 0 boolToOne
 
     badPoint :: Exp Point
     badPoint = constant (-1, -1)
@@ -218,7 +223,7 @@ partition (T2 headFlags points) =
       let
         test1 = propagateR newFlags points
         test2 = propagateL (shiftHeadFlagsR headFlags) test1
-        zipped = zip test2 (propagateL headFlags points)
+        zipped = zip (propagateL headFlags points) test2 
       in
         imap (\ix (T2 a b) -> cond (headFlags ! ix) (T2 badPoint badPoint) (T2 a b)) zipped
 
@@ -263,10 +268,20 @@ partition (T2 headFlags points) =
         totalCount = fold (+) 0 mapped
       in
         T3 offsetUpper' count' totalCount
+    
+    totalSize = 
+      let 
+        flags = the newFlagCount
+        lower = the totalCountLower
+        upper = the totalCountUpper
+      in 
+        flags + lower + upper
+
+
 
     newHeadFlagIndexes :: Acc (Vector Int)
     newHeadFlagIndexes = undefined
-
+    
   in
     error "TODO: partition"
 
@@ -286,7 +301,7 @@ leftLineInEachSegment =
 
     test1 = propagateR newFlags points
     test2 = propagateL (shiftHeadFlagsR headFlags) test1
-    zipped = zip test2 (propagateL headFlags points)
+    zipped = zip (propagateL headFlags points) test2 
   in
     imap (\ix (T2 a b) -> cond (headFlags ! ix) (T2 (-1) (-1)) (T2 a b)) zipped
 
