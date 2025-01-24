@@ -181,7 +181,7 @@ initialPartition points =
 partition :: Acc SegmentedPoints -> Acc SegmentedPoints
 partition (T2 headFlags points) =
   let
-
+    
     -- distances contains a list of postive distances
     -- if not left of the list, it is -1
     -- not sure if checking for isLeftOfLine is ever useful
@@ -189,7 +189,7 @@ partition (T2 headFlags points) =
     distances :: Acc (Vector Int)
     distances =
       let
-        zipped = zip3 (propagateL headFlags points) (propagateR headFlags points) points
+        zipped = atrace "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" $ zip3 (propagateL headFlags points) (propagateR headFlags points) points
         isLeftOfLine = map (\(T3 l1 l2 point) -> pointIsLeftOfLine (T2 l1 l2) point) zipped
       in
         zipWith (\(T3 l1 l2 point) b -> cond (b == constant True) (nonNormalizedDistance (T2 l1 l2) point) (constant (-1))) zipped isLeftOfLine
@@ -198,7 +198,7 @@ partition (T2 headFlags points) =
     maxFlags =
       let
         -- I propagate the max value to the left and right in each segment
-        test1 = segmentedScanl1 max headFlags distances
+        test1 = atrace "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" $segmentedScanl1 max headFlags distances
         test2 = segmentedScanr1 max headFlags distances
       in
         -- Whenever the a and b are the same, the value is the highest value in that segment
@@ -221,7 +221,8 @@ partition (T2 headFlags points) =
     leftLineInEachSegment :: Acc (Vector (Point, Point))
     leftLineInEachSegment =
       let
-        test1 = propagateR newFlags points
+
+        test1 = (propagateR newFlags points)
         test2 = propagateL (shiftHeadFlagsR headFlags) test1
         zipped = zip (propagateL headFlags points) test2 
       in
@@ -269,6 +270,7 @@ partition (T2 headFlags points) =
       in
         T3 offsetUpper' count' totalCount
     
+    
     totalSize = 
       let 
         flags = the newFlagCount
@@ -276,15 +278,18 @@ partition (T2 headFlags points) =
         upper = the totalCountUpper
       in 
         flags + lower + upper
-
+    
 
 
     newHeadFlagIndexes :: Acc (Vector Int)
     newHeadFlagIndexes = undefined
-    
-  in
-    error "TODO: partition"
 
+
+    test = generate (index1 (the totalCountUpper)) (\_ -> (badPoint))
+    test1 = generate (index1 5) (\_ -> (constant False))
+
+  in
+    T2 test1 test
 
 
 -- TESTING STUFF
