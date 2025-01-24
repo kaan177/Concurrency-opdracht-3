@@ -181,7 +181,7 @@ initialPartition points =
 partition :: Acc SegmentedPoints -> Acc SegmentedPoints
 partition (T2 headFlags points) =
   let
-    
+
     -- distances contains a list of postive distances
     -- if not left of the list, it is -1
     -- not sure if checking for isLeftOfLine is ever useful
@@ -207,60 +207,96 @@ partition (T2 headFlags points) =
         -- not sure if this works if multiple distances overlap
         zipWith (curry (\(T2 a b) -> cond (a == b && (a /= constant (0::Int)) && (b /= constant (0::Int))) (constant True) (constant False))) test1 test2
 
-    -- a complete list of all the new flags
+    -- a complete list of all the new flags at their old positions
     newFlags = zipWith (curry (\(T2 a b) -> cond (a || b) (constant True) (constant False))) headFlags maxFlags
 
-    -- not sure what this is??
-    canBePartOfNewHull =
+    badPoint :: Exp Point
+    badPoint = constant (-1, -1)
+
+    leftLineInEachSegment :: Acc (Vector (Point, Point))
+    leftLineInEachSegment =
       let
-        zipped = zip3 (propagateL newFlags points) (propagateR newFlags points) points
-        -- left = propagateR 
+        test1 = propagateR newFlags points
+        test2 = propagateL (shiftHeadFlagsR headFlags) test1
+        zipped = zip test2 (propagateL headFlags points)
       in
-        map (\(T3 l1 l2 point) -> pointIsLeftOfLine (T2 l1 l2) point) zipped
+        imap (\ix (T2 a b) -> cond (headFlags ! ix) (T2 badPoint badPoint) (T2 a b)) zipped
 
+    rightLineInEachSegment :: Acc (Vector (Point, Point))
+    rightLineInEachSegment =
+      let
+        test1 = propagateL newFlags points
+        test2 = propagateR (shiftHeadFlagsL headFlags) test1
+        zipped = zip test2 (propagateR headFlags points)
+      in
+        imap (\ix (T2 a b) -> cond (headFlags ! ix) (T2 badPoint badPoint) (T2 a b)) zipped
 
+    offsetLower :: Acc (Vector Int)
+    countLower  :: Acc (Vector Int)
+    T2 offsetLower countLower =
+      let
+        isInLowerHalf = zipWith pointIsLeftOfLine leftLineInEachSegment points
+        mapped = map (\b -> if b then constant (1 :: Int) else constant 0) isInLowerHalf
+        offsetLower' = map (+ (-1 )) (segmentedScanl1 (+) headFlags mapped)
+        
+        count = propagateR (shiftHeadFlagsL headFlags) offsetLower
+        count' = imap (\ix num -> cond (headFlags ! ix) (-1) num) count
+      in
+        T2 offsetLower' count'
 
-    -- copied stuff from the initial partition, not sure if any of this is useful
-      
-    -- this should be done after things have been removed
-    -- offset for each segment
-    -- segmentedOffset = propagateR indexarray' newFlags
     offsetUpper :: Acc (Vector Int)
-    countUpper  :: Acc (Scalar Int)
+    countUpper :: Acc (Vector Int)
     T2 offsetUpper countUpper =
-        let
-          mapped = map (\b -> if b then constant (1 :: Int) else constant 0) canBePartOfNewHull
-          count = fold (+) 0 mapped
+      let
+        isInUpperHalf = zipWith pointIsLeftOfLine rightLineInEachSegment points
+        mapped = map (\b -> if b then constant (1 :: Int) else constant 0) isInUpperHalf
+        offsetUpper' = map (+ (-1 )) (segmentedScanl1 (+) headFlags mapped)
+        
+        count = propagateR (shiftHeadFlagsL headFlags) offsetLower
+        -- sets the count to -1 when the index is a headFlag
+        count' = imap (\ix num -> cond (headFlags ! ix) (-1) num) count
+      in
+        T2 offsetUpper' count'
 
-          mapped' = map (\_ -> constant (1 :: Int)) canBePartOfNewHull
-
-          -- vlgns mij groeit dit getal exponentieel? 
-          -- Heb eronder een alternatief geschreven die misschien wel de correcte index geeft.
-          indexarray = scanl1 (+) mapped'
-          indexarray' = tail (scanl (\a _ -> a + 1) (constant (-1)) mapped')
-
-          adjustedIndexArray = undefined
-          --adjustedIndexArray = zipWith aBitOfHelp indexarray isUpper
-        in
-          T2 adjustedIndexArray count
 
     newHeadFlagIndexes :: Acc (Vector Int)
     newHeadFlagIndexes = undefined
 
-
-    -- sizeOfNewArray =
-    --   let
-    --     newPoints = countTrue canBePartOfNewHull
-    --     flagCount = countTrue newFlags
-    --   in
-    --     newPoints + flagCount
-
-
-    -- eindigen met een scatter functie
-    -- yay = segmentedScanl1 (\(T3 l1 l2 _) (T3 flag b2 point) -> T3 flag b2 c2) headFlags zipped
   in
     error "TODO: partition"
 
+
+
+-- TESTING STUFF
+
+testFlags = use (fromList (Z:.8) [True, False, False, False, True, False, False, True])
+testList :: Acc (Vector Int)
+testList = use (fromList (Z:.8) [0, 1, 1, 0, 0, 1, 0, 0])
+leftLineInEachSegment :: Acc (Array DIM1 (Int, Int))
+leftLineInEachSegment =
+  let
+    headFlags = use (fromList (Z:.8) [True, False, True, False, True, False, False, True])
+    newFlags = use (fromList (Z:.8) [True, True, False, False, True, False, True, True])
+    points = use (fromList (Z:.8) [0, 1, 2, 3, 4, 5, 6, 7])
+
+    test1 = propagateR newFlags points
+    test2 = propagateL (shiftHeadFlagsR headFlags) test1
+    zipped = zip test2 (propagateL headFlags points)
+  in
+    imap (\ix (T2 a b) -> cond (headFlags ! ix) (T2 (-1) (-1)) (T2 a b)) zipped
+
+rightLineInEachSegment :: Acc (Array DIM1 (Int, Int))
+rightLineInEachSegment =
+  let
+    headFlags = use (fromList (Z:.8) [True, False, False, False, True, False, False, True])
+    newFlags = use (fromList (Z:.8) [True, False, False, True, True, True, False, True])
+    points = use (fromList (Z:.8) [0, 1, 2, 3, 4, 5, 6, 7])
+
+    test1 = propagateL newFlags points
+    test2 = propagateR (shiftHeadFlagsL headFlags) test1
+    zipped = zip test2 (propagateR headFlags points)
+  in
+    imap (\ix (T2 a b) -> cond (headFlags ! ix) (T2 (-1) (-1)) (T2 a b)) zipped
 
 -- The completed algorithm repeatedly partitions the points until there are
 -- no undecided points remaining. What remains is the convex hull.
