@@ -68,9 +68,6 @@ type SegmentedPoints = (Vector Bool, Vector Point)
 initialPartition :: Acc (Vector Point) ->  Acc SegmentedPoints
 initialPartition points =
   let
-      leftMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa < xb) a (cond (xa == xb) (cond (ya < yb) a b) b)
-      rightMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa > xb) a (cond (xa == xb) (cond (ya > yb) a b) b)
-
       p1, p2 :: Exp Point
       -- locate the left-most point
       p1 = the $ fold leftMostTest (constant (maxBound::Int, 0)) points
@@ -79,7 +76,7 @@ initialPartition points =
 
       -- determine which points lie most to the left and right while acounting for equal x values.
       leftMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa < xb) a (cond (xa == xb) (cond (ya < yb) a b) b)
-      rightMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa > xb) a (cond (xa == xb) (cond (ya < yb) a b) b)
+      rightMostTest a@(T2 xa ya) b@(T2 xb yb) = cond (xa > xb) a (cond (xa == xb) (cond (ya > yb) a b) b)
 
       isUpper :: Acc (Vector Bool)
       -- determine which points lie above the line (p₁, p₂)
@@ -475,6 +472,8 @@ maxTest =
     zipped = zip yay3 falseList
     yay4 = segmentedScanl1 helper flags zipped
     end = map fst yay4
+
+
   in
     zipWith (\max' head -> if head then constant False else max') end flags
 
