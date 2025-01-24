@@ -197,6 +197,8 @@ partition (T2 headFlags points) =
     -- flags of the positions where the distances is highest
     maxFlags =
       let
+        
+
         -- I propagate the max value to the left and right in each segment
         test1 = segmentedScanl1 max headFlags distances
         test2 = segmentedScanr1 max headFlags distances
@@ -208,6 +210,7 @@ partition (T2 headFlags points) =
         zipWith (curry (\(T2 a b) -> cond (a == b && (a /= constant (0::Int)) && (b /= constant (0::Int))) (constant True) (constant False))) test1 test2
 
     -- a complete list of all the new flags at their old positions
+    -- check if not -1 -1
     newFlags = zipWith (curry (\(T2 a b) -> cond (a || b) (constant True) (constant False))) headFlags maxFlags
     
     newFlagCount = 
@@ -222,8 +225,7 @@ partition (T2 headFlags points) =
     leftLineInEachSegment :: Acc (Vector (Point, Point))
     leftLineInEachSegment =
       let
-
-        test1 = (propagateR newFlags points)
+        test1 = propagateR newFlags points
         test2 = propagateL (shiftHeadFlagsR headFlags) test1
         zipped = zip (propagateL headFlags points) test2 
       in
@@ -286,12 +288,27 @@ partition (T2 headFlags points) =
     newHeadFlagIndexes = undefined
 
 
+
     test = generate (index1 totalSize) (\_ -> badPoint)
     test1 = generate (index1 5) (\_ -> constant False)
   in
+    atrace "" $
+    atraceArray "start" points $
+    atrace "" $
     atraceArray "distances" distances $
+    atraceArray "max" maxFlags $
     atraceArray "leftLineSegmented" leftLineInEachSegment $
     atraceArray "rightLineSegmented" rightLineInEachSegment $
+    atrace "" $
+    atraceArray "offsetLower" offsetLower $
+    atraceArray "segmentedCountLower" segmentedCountLower $
+    atraceArray "totalCountLower" totalCountLower $
+    atrace "" $
+    atraceArray "offsetUpper" offsetUpper $
+    atraceArray "segmentedCountUpper" segmentedCountUpper $
+    atraceArray "totalCountUpper" totalCountUpper $
+    atrace "" $
+    atraceArray "size" (unit totalSize) $
     T2 test1 test
 
 
@@ -331,6 +348,8 @@ rightLineInEachSegment =
 --
 quickhull :: Acc (Vector Point) -> Acc (Vector Point)
 quickhull =
+  -- maak eerst initialpartition
+  -- als alle flags True zijn, return dan de points
   error "TODO: quickhull"
 
 -- Helper functions
