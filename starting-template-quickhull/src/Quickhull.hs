@@ -28,6 +28,7 @@ import GHC.IO.Handle (BufferMode(LineBuffering))
 import Data.Array.Accelerate.Smart (Exp(Exp), undef)
 import GHC.Base (VecElem(Int16ElemRep))
 import Data.Array.Accelerate.Interpreter (run)
+import Data.Array.Accelerate.Data.Maybe
 
 
 -- Points and lines in two-dimensional space
@@ -286,8 +287,8 @@ partition (T2 headFlags points) =
         doLowerStuff = zipWith (\flag lowerCount -> cond flag 0 lowerCount) newFlags segmentedCountLower
         doUpperStuff = zipWith (\flag upperCount -> cond flag 0 upperCount) newFlags segmentedCountUpper
 
-        test :: Exp DIM1 -> Exp Int -> Exp Int
-        test ix a = 
+        addLowerOrUpperCount :: Exp DIM1 -> Exp Int -> Exp Int
+        addLowerOrUpperCount ix a = 
           if newFlags ! ix
             then 
               if maxFlags ! ix && segmentedCountLower ! ix /= (-1)
@@ -306,34 +307,115 @@ partition (T2 headFlags points) =
             else
               a
         mapped = map (\b -> if b then constant (1 :: Int) else constant 0) newFlags
-        mapped' = imap test mapped
+        mapped' = imap addLowerOrUpperCount mapped
         flagsSeenAtEachLocation = map (+ (-1)) (scanl1 (+) mapped')
       in
         flagsSeenAtEachLocation
-    
 
-    test = generate (index1 totalSize) (\_ -> badPoint)
-    test1 = generate (index1 5) (\_ -> constant False)
+    mapLower :: Acc (Vector (Maybe DIM1))
+    mapLower =
+      let
+        halp :: Exp DIM1 -> Exp Int -> Exp (Maybe DIM1)
+        halp ix a = 
+          if 
+            offsetLower ! ix /= (-1)
+          then
+            lift (Just (Z:. a + offsetLower ! ix))
+          else 
+            constant Nothing
+        flags = map (+1) (propagateL headFlags newHeadFlagIndexes)
+        yay = imap halp flags
+      in 
+        yay
+    
+    mapUpper :: Acc (Vector (Maybe DIM1))
+    mapUpper =
+      let
+        halp :: Exp DIM1 -> Exp Int -> Exp (Maybe DIM1)
+        halp ix a = 
+          if 
+            offsetUpper ! ix /= (-1)
+          then
+            lift (Just (Z:. a + offsetUpper ! ix))
+          else 
+            constant Nothing
+        flags = map (+1) (propagateL maxFlags newHeadFlagIndexes)
+        yay = imap halp flags
+      in 
+        yay
+    
+    mapFlags :: Acc (Vector (Maybe DIM1))
+    mapFlags =
+      let 
+        halp :: Exp DIM1 -> Exp Int -> Exp (Maybe DIM1)
+        halp ix a = 
+          if 
+            newFlags ! ix
+          then
+            lift (Just (Z:. a))
+          else 
+            constant Nothing
+        yay = imap halp newHeadFlagIndexes
+      in 
+        yay
+    
+    halp :: Exp (Maybe DIM1) -> Exp (Maybe DIM1) -> Exp (Maybe DIM1) -> Exp (Maybe DIM1)
+    halp a b c = if isNothing a && isNothing b
+      then
+        c
+      else
+        if isNothing b
+          then a
+        else 
+          b
+        
+
+    destination = zipWith3 halp mapLower mapUpper mapFlags
+
+
+    newPoints :: Acc (Vector Point)
+    newPoints =
+      let
+        list = fill (index1 totalSize) undef
+        listWithoutPoints = permute const list (destination !) points
+      in
+        listWithoutPoints
+
+    endFlags :: Acc (Vector Bool)
+    endFlags =
+      let
+        falseList = fill (index1 totalSize) (constant False)
+        trueList = fill (index1 (length newHeadFlagIndexes)) (constant True)
+      in
+        scatter newHeadFlagIndexes falseList trueList
+
   in
-    atrace "" $
-    atraceArray "start" points $
-    atrace "" $
-    atraceArray "distances" distances $
-    atraceArray "max" maxFlags $
-    atraceArray "leftLineSegmented" leftLineInEachSegment $
-    atraceArray "rightLineSegmented" rightLineInEachSegment $
-    atrace "" $
-    atraceArray "offsetLower" offsetLower $
-    atraceArray "segmentedCountLower" segmentedCountLower $
-    atraceArray "totalCountLower" totalCountLower $
-    atrace "" $
-    atraceArray "offsetUpper" offsetUpper $
-    atraceArray "segmentedCountUpper" segmentedCountUpper $
-    atraceArray "totalCountUpper" totalCountUpper $
-    atrace "" $
-    atraceArray "size" (unit totalSize) $
-    atraceArray "test" (newHeadFlagIndexes) $
-    T2 test1 test
+    -- atrace "" $
+    -- atraceArray "start" points $
+    -- atrace "" $
+    -- atraceArray "distances" distances $
+    -- atraceArray "max" maxFlags $
+    -- atraceArray "leftLineSegmented" leftLineInEachSegment $
+    -- atraceArray "rightLineSegmented" rightLineInEachSegment $
+    -- atrace "" $
+    -- atraceArray "offsetLower" offsetLower $
+    -- atraceArray "segmentedCountLower" segmentedCountLower $
+    -- atraceArray "totalCountLower" totalCountLower $
+    -- atrace "" $
+    -- atraceArray "offsetUpper" offsetUpper $
+    -- atraceArray "segmentedCountUpper" segmentedCountUpper $
+    -- atraceArray "totalCountUpper" totalCountUpper $
+    -- atrace "" $
+    -- atraceArray "size" (unit totalSize) $
+    -- atraceArray "newHeadFlagIndexes" newHeadFlagIndexes $
+    -- atraceArray "mapLower" mapLower $
+    -- atraceArray "mapUpper" mapUpper $
+    -- atraceArray "mapFlags" mapFlags $
+    -- atrace "" $
+    -- atraceArray "destination" destination $
+    -- atraceArray "newPoints" newPoints $
+    -- atraceArray "endFlags" endFlags $
+    T2 endFlags newPoints
 
 
 -- TESTING STUFF
